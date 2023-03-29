@@ -1,4 +1,4 @@
-# P-tuning v2
+# blip-fewshot-tuning
  tuning the bilp2 adapt to multiple images
 
 ## Reproduce Tips
