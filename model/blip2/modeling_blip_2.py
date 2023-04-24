@@ -1289,6 +1289,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         
         # locted img location
         sp_token = 32100 # 图 token_id
+        img_token_0=32101
         # step 1: forward the images through the vision encoder,
         # to get image embeddings of shape (batch_size, seq_len, hidden_size)
         # mutil image mode
@@ -1297,6 +1298,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         lm_input_size=[]
         for index,pixel in enumerate(pixel_values):
             image_embeds_index = torch.where(input_ids[index] == sp_token)[0]
+            embed2idx = {i:input_ids[index][idx-1].item()-img_token_0 for i,idx in enumerate(image_embeds_index)}
             pictures = pixel[img_mask[index].bool()]
             vision_outputs = self.vision_model(
                 pixel_values=pictures,
@@ -1338,8 +1340,8 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
             for i,j in enumerate(image_embeds_index):
                 start = j+1
                 end = image_embeds_index[i+1] if i < len(image_embeds_index)-1 else len(inputs_embeds)
-                emd +=[language_model_inputs[i],inputs_embeds[start:end]]
-                mask +=[language_model_attention_mask[i],attention_mask[index][start:end]]
+                emd +=[language_model_inputs[embed2idx[i]],inputs_embeds[start:end]]
+                mask +=[language_model_attention_mask[embed2idx[i]],attention_mask[index][start:end]]
         
             single_inputs_embeds = torch.cat(emd, dim=0)
             single_attention_mask = torch.cat(mask, dim=0)
@@ -1427,6 +1429,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
             captions (list): A list of strings of length batch_size * num_captions.
         """
         sp_token = 32100 # 图 token_id
+        img_token_0 =32101 # <image0> token_id
         lm_inputs =[]
         lm_masks =[]
         lm_input_size=[]
@@ -1442,6 +1445,8 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         for index,pixel in enumerate(pixel_values):
             if not caption_flag:
                 image_embeds_index = torch.where(input_ids[index] == sp_token)[0]
+                embed2idx = {i:input_ids[index][idx-1].item()-img_token_0 for i,idx in enumerate(image_embeds_index)}
+
             if img_mask is None:
                 pictures = pixel
             else:
@@ -1474,8 +1479,8 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
                 for i,j in enumerate(image_embeds_index):
                     start = j+1
                     end = image_embeds_index[i+1] if i < len(image_embeds_index)-1 else len(inputs_embeds)
-                    emd +=[language_model_inputs[i],inputs_embeds[start:end]]
-                    mask +=[language_attention_mask[i],attention_mask[index][start:end]]
+                    emd +=[language_model_inputs[embed2idx[i]],inputs_embeds[start:end]]
+                    mask +=[language_attention_mask[embed2idx[i]],attention_mask[index][start:end]]
                 single_inputs_embeds = torch.cat(emd, dim=0)
                 single_attention_mask = torch.cat(mask, dim=0)
                 lm_inputs.append(single_inputs_embeds)

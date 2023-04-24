@@ -13,7 +13,7 @@ from transformers import AdamW
 from .dataset import FlickrDataset
 from model.utils import get_model
 from training.trainer_blip2 import BLIP2Trainer
-
+from accelerate import Accelerator, DistributedType
 from model.blip2.processing_blip_2 import Blip2Processor
 from model.blip2.configuration_blip_2 import Blip2Config
 import torch
@@ -27,14 +27,15 @@ def get_trainer(args):
     logger.setLevel(log_level)
 
     processor = Blip2Processor.from_pretrained(
-        '/home/haozhezhao/models/blip2-flan-t5-xl',
+        '/home/haozhezhao/models/blip2-flan-t5-xxl',
     )
     sp = ["图"]+[f"<image{i}>" for i in range(20)]
     sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
     processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
 
     config = Blip2Config.from_pretrained(
-        '/home/haozhezhao/models/blip2-flan-t5-xl'
+        # '/home/haozhezhao/models/blip2-flan-t5-xxl'
+        model_args.model_name_or_path
     )
     
     dataset = FlickrDataset(processor, model_args, data_args, training_args, config)
@@ -57,8 +58,8 @@ def get_trainer(args):
 
             # pixel_values = dataset.train_dataset[index]["pixel_values"]
             # logger.info(f"Sample inputs shape {index} of the training set: {pixel_values.shape}.")
-
-    # model = get_model(model_args, config).to(dtype=torch.bfloat16,device=training_args.device)
+    # accelerator = Accelerator()
+    # model = get_model(model_args, config).to(dtype=torch.bfloat16)
     config.text_config._from_model_config =False
     model = get_model(model_args, config)
 

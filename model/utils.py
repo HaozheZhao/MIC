@@ -57,6 +57,9 @@ def get_model(model_args, config: AutoConfig, fix_bert: bool = False):
         param.requires_grad = True
     for param in model.language_projection.parameters():
         param.requires_grad = True
+    # for param in model.vision_model.encoder.layers[-3:].parameters():
+    #     param.requires_grad = True
+        
     for param in model.language_model.decoder.block[-3:].parameters():
         param.requires_grad = True
     print('***** total param is {} *****'.format(total_param))

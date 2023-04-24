@@ -84,8 +84,6 @@ def predict(trainer, predict_dataset=None):
         with open(os.path.join('./checkpoints/', trainer.model_args.experiment_name, "predictions.json"), "w") as f:
             json.dump(predictions.tolist(), f, indent=4)
 if __name__ == "__main__":
-    os.environ["CUDA_VISIBLE_DEVICES"] = "6"
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "4"
     args = get_args()
 
     model_args, data_args, training_args = args
