@@ -13,6 +13,10 @@ from transformers import AdamW
 from .dataset import FlickrDataset
 from model.utils import get_model
 from training.trainer_blip2 import BLIP2Trainer
+from training.trainer_instructblip2 import InstructBLIP2Trainer
+from model.instructblip.processing_instructblip import InstructBlipProcessor
+from model.instructblip.configuration_instructblip import InstructBlipConfig
+
 from accelerate import Accelerator, DistributedType
 from model.blip2.processing_blip_2 import Blip2Processor
 from model.blip2.configuration_blip_2 import Blip2Config
@@ -25,18 +29,39 @@ def get_trainer(args):
 
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
+    model_type = model_args.model_type
+    if model_type == 'blip2':
+        config = Blip2Config.from_pretrained(
+                    model_args.model_name_or_path
+            )
+    elif model_type == 'instructblip':
+        config = InstructBlipConfig.from_pretrained(
+            model_args.model_name_or_path
+        )
+    model = get_model(model_args, config)
+    processor_path =  model_args.processor_path if model_args.processor_path is not None else model_args.model_name_or_path
+    if model_type == 'blip2':
+        processor = Blip2Processor.from_pretrained(
+            processor_path,
+        )
+        sp = ["图"]+[f"<image{i}>" for i in range(20)]
+        sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
+        processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
 
-    processor = Blip2Processor.from_pretrained(
-        '/home/haozhezhao/models/blip2-flan-t5-xxl',
-    )
-    sp = ["图"]+[f"<image{i}>" for i in range(20)]
-    sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
-    processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+    elif model_type == 'instructblip':
+        processor = InstructBlipProcessor.from_pretrained(
+            processor_path
+        )
+     
+        sp = ["图"]+[f"<image{i}>" for i in range(20)]
+        sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
+        processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+        processor.qformer_tokenizer.add_special_tokens({'additional_special_tokens':sp})
+        if model.qformer.embeddings.word_embeddings.weight.shape[0] != len(processor.qformer_tokenizer):
+            model.qformer.resize_token_embeddings(len(processor.qformer_tokenizer))
 
-    config = Blip2Config.from_pretrained(
-        # '/home/haozhezhao/models/blip2-flan-t5-xxl'
-        model_args.model_name_or_path
-    )
+
+    config.text_config._from_model_config =False
     
     dataset = FlickrDataset(processor, model_args, data_args, training_args, config)
 
@@ -60,21 +85,33 @@ def get_trainer(args):
             # logger.info(f"Sample inputs shape {index} of the training set: {pixel_values.shape}.")
     # accelerator = Accelerator()
     # model = get_model(model_args, config).to(dtype=torch.bfloat16)
-    config.text_config._from_model_config =False
-    model = get_model(model_args, config)
-
-    trainer = BLIP2Trainer(
-        processor=processor,
-        model=model,
-        config=config,
-        args=training_args,
-        model_args=model_args,
-        train_dataset=dataset.train_dataset if training_args.do_train else None,
-        # test_dataset=dataset.eval_dataset if training_args.do_test else None,
-        eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
-        predict_dataset=dataset.predict_dataset, # 这个是用来测试的
-        compute_metrics=dataset.compute_metrics,
-        data_collator=dataset.data_collator,
-    )
+    if model_type == 'blip2':
+        trainer = BLIP2Trainer(
+            processor=processor,
+            model=model,
+            config=config,
+            args=training_args,
+            model_args=model_args,
+            train_dataset=dataset.train_dataset if training_args.do_train else None,
+            # test_dataset=dataset.eval_dataset if training_args.do_test else None,
+            eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
+            predict_dataset=dataset.predict_dataset, # 这个是用来测试的
+            compute_metrics=dataset.compute_metrics,
+            data_collator=dataset.data_collator,
+        )
+    elif model_type == 'instructblip':
+            trainer = InstructBLIP2Trainer(
+            processor=processor,
+            model=model,
+            config=config,
+            args=training_args,
+            model_args=model_args,
+            train_dataset=dataset.train_dataset if training_args.do_train else None,
+            # test_dataset=dataset.eval_dataset if training_args.do_test else None,
+            eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
+            predict_dataset=dataset.predict_dataset, # 这个是用来测试的
+            compute_metrics=dataset.compute_metrics,
+            data_collator=dataset.data_collator,
+        )
 
     return trainer, dataset.predict_dataset

@@ -1,9 +1,19 @@
+###
+ # @Author: JustBluce 972281745@qq.com
+ # @Date: 2022-11-24 13:29:31
+ # @LastEditors: JustBluce 972281745@qq.com
+ # @LastEditTime: 2023-02-18 21:04:18
+ # @FilePath: /SNIPS/run_script/SNIPS/run_boolq.sh
+ # @Description: 测试SNIPS用到的脚本
+###
 
 export EXPERIMENT_NAME=BLIP2_FLICKR_deepSpeed_mix_shot_multiinst_6B
 export DATASET_NAME=flickr
 export CUDA_VISIBLE_DEVICES=3,4
 export MODEL_DIR=/home/haozhezhao/models/
 export MODEL_NAME=blip2-flan-t5-xxl
+# 没有这行会卡住
+# export NCCL_P2P_DISABLE=1
 
 bs=2
 eval_bs=4
@@ -48,6 +58,7 @@ accelerate launch --config_file config/accelerate_zero3_config_2gpu.yaml run.py 
 --do_full_training True \
 --max_eval_samples 3000 \
 --max_predict_samples 3000 \
+--save_total_limit 3 \
 # --load_best_model_at_end \
 # --multiple_choice True
 

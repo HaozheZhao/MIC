@@ -11,22 +11,29 @@ from transformers import (
 import torch
 import h5py
 from PIL import Image
+import os
 import torch.nn as nn
 import numpy as np
 import logging
 from datasets import load_metric,Dataset,concatenate_datasets
+import datasets
 from collections import defaultdict
 from os.path import join
 from sklearn.metrics import accuracy_score, zero_one_loss, precision_score, recall_score, f1_score, hamming_loss, roc_auc_score
 from torch.nn.functional import pad
 from typing import Any, Callable, Dict, List, NewType
 from torchmetrics import BLEUScore
+from torchmetrics.text.rouge import ROUGEScore
 from glob import glob
+from pycocoevalcap.bleu.bleu_scorer import BleuScorer
+
+from pycocoevalcap.cider.cider_scorer import CiderScorer
 InputDataClass = NewType("InputDataClass", Any)
 from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
-
+IGNORE_INDEX=-100
+datasets.config.IN_MEMORY_MAX_SIZE = 300 *1024 *1024 *1024
 
 class FlickrDataset():
     def __init__(self, processor, model_args, data_args, training_args, config):
@@ -38,6 +45,7 @@ class FlickrDataset():
         self.data_args = data_args
         self.training_args = training_args
         self.config = config
+        self.model_type = model_args.model_type
 
         if self.data_args.pad_to_max_length:
             self.padding = "max_length"
@@ -50,68 +58,78 @@ class FlickrDataset():
                 f"model ({processor.tokenizer.model_max_length}). Using max_seq_length={processor.tokenizer.model_max_length}."
             )
         self.max_seq_length = min(data_args.max_seq_length, processor.tokenizer.model_max_length)
-        if not self.data_args.do_full_training:
-            if self.data_args.dataset_name in ['flickr']:
-                self.train_dataset = load_dataset('json', data_files=self.data_args.train_file)
-                self.eval_dataset = load_dataset('json', data_files=self.data_args.validation_file)
-                self.predict_dataset = load_dataset('json', data_files=self.data_args.test_file)
-
-                self.train_dataset = self.train_dataset.shuffle(training_args.seed)
-
-                print(f"debug: train_dataset {self.train_dataset}")
-
-                self.train_dataset = self.train_dataset.map(
-                    self.preprocess_function,
-                    load_from_cache_file=not self.data_args.overwrite_cache,
-                    desc="Runing one tokenization"
-                )
-                # self.eval_dataset = self.train_dataset
-                # self.predict_dataset = self.train_dataset
-                self.eval_dataset = self.eval_dataset.map(
-                    self.preprocess_function,
-                    load_from_cache_file=not self.data_args.overwrite_cache,
-                    desc="Runing one tokenization"
-                )
-                self.predict_dataset = self.predict_dataset.map(
-                    self.preprocess_function,
-                    load_from_cache_file=not self.data_args.overwrite_cache,
-                    desc="Runing one tokenization"
-                )
-                self.train_dataset = self.train_dataset.map(
-                    self.preprocess_function_batched,
-                    batched=True,
-                    load_from_cache_file=not self.data_args.overwrite_cache,
-                    desc="Runing one tokenization"
-                )
-                self.eval_dataset = self.eval_dataset.map(
-                    self.preprocess_function_batched,
-                    batched=True,
-                    load_from_cache_file=not self.data_args.overwrite_cache,
-                    desc="Runing one tokenization"
-                )
-                self.predict_dataset = self.predict_dataset.map(
-                    self.preprocess_function_batched,
-                    batched=True,
-                    load_from_cache_file=not self.data_args.overwrite_cache,
-                    desc="Runing one tokenization"
-                )
-
-                # Split train and dev datasets
-                self.train_dataset = self.train_dataset["train"]
-                self.eval_dataset = self.eval_dataset["train"]
-                self.predict_dataset = self.predict_dataset["train"]
-
-                print(f"length train dataset {self.train_dataset.num_rows}")
-                print(f"length eval dataset {self.eval_dataset.num_rows}")
-                print(f"length test dataset {self.predict_dataset.num_rows}")
+        if self.data_args.only_evaluate:
+            self.predict_dataset = self.load_evaluate_dataset_from_arrow(self.data_args.test_file)
+            self.eval_dataset  =None
+            self.train_dataset  =None
         else:
-                self.train_dataset = self.load_dataset_from_arrow(data_files=self.data_args.train_file)
-                self.eval_dataset = self.load_dataset_from_arrow(data_files=self.data_args.validation_file)
-                # self.eval_dataset =Dataset.from_file(join(self.data_args.validation_file,"bilp2-temp-val-0.arrow"))
-                # self.predict_dataset =Dataset.from_file(join(self.data_args.test_file,"bilp2-temp-test-0.arrow"))
-                self.predict_dataset = self.load_dataset_from_arrow(data_files=self.data_args.test_file)
+            if not self.data_args.do_full_training:
+                if self.data_args.dataset_name in ['flickr']:
+                    self.train_dataset = load_dataset('json', data_files=self.data_args.train_file)
+                    self.eval_dataset = load_dataset('json', data_files=self.data_args.validation_file)
+                    self.predict_dataset = load_dataset('json', data_files=self.data_args.test_file)
 
-                self.train_dataset = self.train_dataset.shuffle(training_args.seed)
+                    self.train_dataset = self.train_dataset.shuffle(training_args.seed)
+
+                    print(f"debug: train_dataset {self.train_dataset}")
+
+                    self.train_dataset = self.train_dataset.map(
+                        self.preprocess_function,
+                        load_from_cache_file=not self.data_args.overwrite_cache,
+                        desc="Runing one tokenization"
+                    )
+                    # self.eval_dataset = self.train_dataset
+                    # self.predict_dataset = self.train_dataset
+                    self.eval_dataset = self.eval_dataset.map(
+                        self.preprocess_function,
+                        load_from_cache_file=not self.data_args.overwrite_cache,
+                        desc="Runing one tokenization"
+                    )
+                    self.predict_dataset = self.predict_dataset.map(
+                        self.preprocess_function,
+                        load_from_cache_file=not self.data_args.overwrite_cache,
+                        desc="Runing one tokenization"
+                    )
+                    self.train_dataset = self.train_dataset.map(
+                        self.preprocess_function_batched,
+                        batched=True,
+                        load_from_cache_file=not self.data_args.overwrite_cache,
+                        desc="Runing one tokenization"
+                    )
+                    self.eval_dataset = self.eval_dataset.map(
+                        self.preprocess_function_batched,
+                        batched=True,
+                        load_from_cache_file=not self.data_args.overwrite_cache,
+                        desc="Runing one tokenization"
+                    )
+                    self.predict_dataset = self.predict_dataset.map(
+                        self.preprocess_function_batched,
+                        batched=True,
+                        load_from_cache_file=not self.data_args.overwrite_cache,
+                        desc="Runing one tokenization"
+                    )
+
+                    # Split train and dev datasets
+                    self.train_dataset = self.train_dataset["train"]
+                    self.eval_dataset = self.eval_dataset["train"]
+                    self.predict_dataset = self.predict_dataset["train"]
+
+                    print(f"length train dataset {self.train_dataset.num_rows}")
+                    print(f"length eval dataset {self.eval_dataset.num_rows}")
+                    print(f"length test dataset {self.predict_dataset.num_rows}")
+            else:
+                if self.model_type == 'instructblip' or self.model_type == 'blip2':
+                    self.train_dataset,self.eval_dataset,self.predict_dataset = self.load_instruct_dataset_from_arrow(self.data_args.train_file)
+                    self.train_dataset = self.train_dataset.shuffle(training_args.seed)
+
+                else:
+                    self.train_dataset = self.load_dataset_from_arrow(data_files=self.data_args.train_file)
+                    self.eval_dataset = self.load_dataset_from_arrow(data_files=self.data_args.validation_file)
+                    # self.eval_dataset =Dataset.from_file(join(self.data_args.validation_file,"bilp2-temp-val-0.arrow"))
+                    # self.predict_dataset =Dataset.from_file(join(self.data_args.test_file,"bilp2-temp-test-0.arrow"))
+                    self.predict_dataset = self.load_dataset_from_arrow(data_files=self.data_args.test_file)
+
+                    self.train_dataset = self.train_dataset.shuffle(training_args.seed)
 
         if training_args.do_train:
             if data_args.max_train_samples is not None:
@@ -126,6 +144,37 @@ class FlickrDataset():
         self.data_collator = self.collector
         self.metric = load_metric('accuracy')
         self.test_key = "accuracy"
+
+    
+    def load_evaluate_dataset_from_arrow(self,eval_dataset_dir):
+        eval_datadir = glob(os.path.join(eval_dataset_dir, "bilp2*.arrow"))
+        eval_ds= concatenate_datasets([Dataset.from_file(score) for score in eval_datadir ])
+        return eval_ds
+
+    def load_instruct_dataset_from_arrow(self,dataset_folder):
+        # 初始化三个列表用于存储不同分类的文件地址
+        train_files = []
+        test_files = []
+        val_files = []
+
+        # 遍历数据集文件夹
+        for dataset_name in os.listdir(dataset_folder):
+            dataset_path = os.path.join(dataset_folder, dataset_name)
+            
+            # 检查是否存在"train"文件夹
+            for dir in os.listdir(dataset_path):
+                folder = os.path.join(dataset_path, dir)
+                if 'train' in folder:
+                    train_files.extend(glob(os.path.join(folder, "bilp2*.arrow")))
+                elif 'test' in folder:
+                    test_files.extend(glob(os.path.join(folder, "bilp2*.arrow")))
+                elif 'val' in folder:
+                    val_files.extend(glob(os.path.join(folder, "bilp2*.arrow")))
+        train_ds = concatenate_datasets([Dataset.from_file(score) for score in train_files ])
+        test_ds = concatenate_datasets([Dataset.from_file(score) for score in test_files ])
+        val_ds = concatenate_datasets([Dataset.from_file(score) for score in val_files ])
+        return train_ds,val_ds,test_ds
+
     def load_dataset_from_arrow(self,data_files):
         files = glob(join(data_files,"bilp2*[0-9].arrow"))
         ds = concatenate_datasets([Dataset.from_file(score) for score in files ])
@@ -196,6 +245,7 @@ class FlickrDataset():
             else:
                 dtype = torch.long if type(first["label_ids"][0]) is int else torch.float
                 batch["labels"] = torch.tensor([f["label_ids"] for f in features], dtype=dtype)
+        batch["labels"][torch.where( batch["labels"]==self.processor.tokenizer.pad_token_id)]= IGNORE_INDEX 
         ignored_keys = ['input_text', 'input_image', 'output_text', 'output_image','pixel_values']
         for k, v in first.items():
             if k not in ("label", "label_ids") and v is not None and not isinstance(v, str) and k not in ignored_keys :
@@ -213,25 +263,45 @@ class FlickrDataset():
                     image,img_mask =self.padd_images(f[k],max_image_length)
                     image_list.append(image)
                     mask_list.append(img_mask)
-                batch[k] = torch.stack(image_list)
+                if self.training_args.bf16_full_eval:
+                    batch[k] = torch.stack(image_list).to(dtype=torch.bfloat16)
+                else:
+                    batch[k] = torch.stack(image_list)
                 batch['img_mask'] = torch.stack(mask_list)
         # for each in batch:
         #     if isinstance(batch[each], torch.Tensor) and (batch[each].dtype == torch.float32):
         #         batch[each] = batch[each].to(dtype= torch.bfloat16)
+        if self.model_type=='instructblip' and self.training_args.using_instruct_qformer:
+            q_former_input = self.processor.tokenizer.batch_decode(batch['input_ids'])
+            q_former_input = [inputs.replace('<pad>',"").replace('</s>',"") for inputs in q_former_input]
+            q_former_re = self.processor.qformer_tokenizer(q_former_input, padding=self.padding, max_length=self.max_seq_length, truncation=True,return_tensors="pt")
+            batch['qformer_input_ids'] = q_former_re['input_ids']
+            batch['qformer_attention_mask'] = q_former_re['attention_mask']
+            
+
         return batch
 
     def compute_metrics(self, p: EvalPrediction):
 
         preds = p.predictions
         labels = p.label_ids
-        preds[preds==-100] = 0
+        preds[preds==IGNORE_INDEX] = 0
+
+        labels[labels==IGNORE_INDEX] = 0
         bleu = BLEUScore()
+        rouge = ROUGEScore()
+        cider_scorer = CiderScorer(n=4, sigma=6)
+        bleu_scorer = BleuScorer(n=4)
+
         bleu_result = []
         accuracy = 0
         dict_return={}
-        for i,pred in enumerate(preds):
-            p_token = self.processor.tokenizer.decode(pred,skip_special_tokens=True)
-            label_token = self.processor.tokenizer.decode(labels[i],skip_special_tokens=True)
+        
+        p_token_batch = self.processor.tokenizer.batch_decode(preds,skip_special_tokens=True)
+        label_token_batch = self.processor.tokenizer.batch_decode(labels,skip_special_tokens=True)
+        # rouge_mertic = rouge(p_token_batch , label_token_batch )
+        for i,p_token in enumerate(p_token_batch):
+
             # if self.training_args.multiple_choice:
             #     l = label_token.split(' ')[0]
             #     if l in p_token:
@@ -240,18 +310,32 @@ class FlickrDataset():
             # else:
             #     if p_token == label_token:
             #         accuracy+=1
-            l = label_token.split(' ')[0]
+            bleu_result.append(bleu([p_token],[[label_token_batch[i]]]).item())
+            cider_scorer+= (p_token,[label_token_batch[i]])
+            bleu_scorer+= (p_token,[label_token_batch[i]])
+            l = label_token_batch[i].split(' ')[0]
             if "option" in l:
-                if l in p_token:
+                if l in p_token or p_token in label_token_batch[i]:
                     accuracy+=1
             else:
-                if p_token == label_token:
+                if p_token == label_token_batch[i] or p_token in label_token_batch[i] or  label_token_batch[i] in p_token:
                     accuracy+=1
+        cider,_ = cider_scorer.compute_score()
+        bleu_score, _ = bleu_scorer.compute_score(option='closest', verbose=1)
 
         # if self.training_args.multiple_choice:
         #     dict_return ={
         #     # "BleuScore": bleu_result,
         #     'Avg_BleuScore':np.array(bleu_result).mean(),
         #     }
+        dict_return['bleu_1'] = bleu_score[0]
+        dict_return['bleu_2'] = bleu_score[1]
+        dict_return['bleu_3'] = bleu_score[2]
+        dict_return['bleu_4'] = bleu_score[3]
+        dict_return['cider'] = cider
         dict_return['accuracy'] = accuracy/len(preds)
+        dict_return['avg_bleuScore'] = np.array(bleu_result).mean()
+        # dict_return.update(rouge_mertic)
+
+
         return dict_return

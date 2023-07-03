@@ -1,18 +1,32 @@
-export EXPERIMENT_NAME=BLIP2_FLICKR_deepSpeed_mix_shot_multiinst_6B_unfreeze_LLM
+###
+ # @Author: JustBluce 972281745@qq.com
+ # @Date: 2022-11-24 13:29:31
+ # @LastEditors: JustBluce 972281745@qq.com
+ # @LastEditTime: 2023-02-18 21:04:18
+ # @FilePath: /SNIPS/run_script/SNIPS/run_boolq.sh
+ # @Description: 测试SNIPS用到的脚本
+###
+
+export EXPERIMENT_NAME=BLIP2_FLICKR_deepSpeed_mix_shot_multiinst_6B_only_unfreeze_Prjection
 export DATASET_NAME=flickr
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6
+export CUDA_VISIBLE_DEVICES=4,5,6
 export MODEL_DIR=/home/haozhezhao/models/
 export MODEL_NAME=blip2-flan-t5-xxl
+model_name_or_path=/home/haozhezhao/VisionLanguagePromptSource/transformers-deepspeed/checkpoints/BLIP2_FLICKR_deepSpeed_mix_shot_multiinst_6B_unfreeze_LLM/checkpoint-5000
+# model_name_or_path=${MODEL_DIR}${MODEL_NAME}
 # remember to change the consponding tokenizer model
 
-bs=3
+bs=4
 eval_bs=6
 lr=5e-5
 dropout=0.1
 epoch=2
 seed=1234
-
-deepspeed run.py \
+do_train=True
+do_test=True
+do_valid=True
+master_port=29502
+deepspeed --master_port $master_port run.py \
 --experiment_name ${EXPERIMENT_NAME} \
 --dataset_name ${DATASET_NAME} \
 --dataset_config_name None \
@@ -22,9 +36,9 @@ deepspeed run.py \
 --train_file /home/haozhezhao/Vision-PromptSource/arrow_data_bilp2-prompt-allshot-multiinst_train \
 --validation_file /home/haozhezhao/Vision-PromptSource/arrow_data_bilp2-prompt-allshot-multiinst_val \
 --test_file /home/haozhezhao/Vision-PromptSource/arrow_data_bilp2-prompt-allshot-multiinst_test \
---do_train \
---do_eval \
---do_predict \
+--do_train $do_train \
+--do_eval $do_valid \
+--do_predict $do_test \
 --per_device_train_batch_size ${bs} \
 --bf16 \
 --per_device_eval_batch_size ${eval_bs} \
@@ -37,7 +51,7 @@ deepspeed run.py \
 --seed ${seed} \
 --warmup_ratio 0.2 \
 --save_strategy steps \
---save_steps 5000 \
+--save_steps 2000 \
 --evaluation_strategy steps \
 --eval_steps 1000 \
 --remove_unused_columns False \

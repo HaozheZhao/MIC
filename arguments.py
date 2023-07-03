@@ -101,6 +101,12 @@ class DataTrainingArguments:
             "help": "whether to using all data"
         },
     )
+    only_evaluate: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": "whether to only test the result"
+        },
+    )
 
 @dataclass
 class ModelArguments:
@@ -237,9 +243,9 @@ class ModelArguments:
         }
     )
     model_type: Optional[str] = field(
-        default="none",
+        default="blip2",
         metadata={
-            "help": "rdrop, AT, mixup, manifold_mixup"
+            "help": "blip2, instructblip"
         }
     )
     label: Optional[str] = field(
@@ -260,6 +266,14 @@ class ModelArguments:
         metadata={
             "help": ""
         }
+
+    )
+    processor_path: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": ""
+        }
+
     )
 
 
@@ -271,7 +285,12 @@ class ExtraTrainingArguments(TrainingArguments):
             "help": "generation_max_length"
         }
     )
-
+    generation_min_length: Optional[int] = field(
+        default=1,
+        metadata={
+            "help": "generation_min_length"
+        }
+    )
     generation_num_beams: Optional[int] = field(
         default=5,
         metadata={
@@ -292,6 +311,12 @@ class ExtraTrainingArguments(TrainingArguments):
     )
     few_shot : bool = field(
         default=False,
+        metadata={
+            "help": ""
+        }
+    )
+    using_instruct_qformer: bool = field(
+        default=True,
         metadata={
             "help": ""
         }
