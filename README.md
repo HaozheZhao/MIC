@@ -42,12 +42,14 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
 ### [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
 + test set
+  
 | Method  | Vision Model | Language Model | Overall  | LR    | AR     | RR    | FP-S | FP-C  | CP     |
 |---------|--------------|----------------|----------|-------|--------|-------|------|-------|--------|
 | MMICL   | EVA-G        | FLANT5-XXL     | **65.2**    | 44.3 | **77.9**  | **64.8** | **66.5** | **53.6**  |  **70.6** |
 | [JiuTian](https://github.com/rshaojimmy/JiuTian) | EVA-G        | FLANT5-XXL     | 64.7     | 46.6  | 76.5   | 66.7  | 66.5 | 51.6  | 68.7   |
 
 + test set
+  
 | Method  | Vision Model | Language Model | Overall  | LR    | AR     | RR    | FP-S | FP-C  | CP     |
 |---------|--------------|----------------|----------|-------|--------|-------|------|-------|--------|
 | MMICL   | EVA-G        | FLANT5-XXL     | **67.9**    | **49.2** | **77.9**  | **73.0** | 66.7 | 57.2  |  **77.2** |
