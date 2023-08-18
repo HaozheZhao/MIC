@@ -80,7 +80,7 @@ Finally, install other python packages we need:
 pip install -r requirements.txt
 ```
 
-### Data
+### MIC Data
 Using multiple data source such as: VCR, VQAv2, GQA, COCO, NLVR2, OKVQK, FILCKR, STVQA, MSRVTT, MSRVTTQA, TextVQA, RefCOCO, WikiArt, DiffusionDB, VSR, LLaVa-Instruct, MiniImagenet
 We tranform it into few shot style and stored it into jsonl files:
 It forms the all data in to multi instruction style with zero to few-shot form data.
