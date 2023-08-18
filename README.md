@@ -4,7 +4,7 @@
  🔥 Further details of model and dataset will be released ASAP. 
 
 
-+ Visual Encoder: P VIT-L from CLIP/ ViT-G/14 from EVA-CLI
++ Visual Encoder:  VIT-L from CLIP/ ViT-G/14 from EVA-CLIP 
 
 
 + Pre-trained LLM: FlanT5-XL/FlanT5-XXL/Vicuna-7B/Vicuna-13B
