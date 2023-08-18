@@ -64,13 +64,13 @@ Input:  Image 0 is <image0> {image 0}.
 
 MMICL:  {answer}
  ```
--interleaved image text example
+- interleaved image text example
  ![interleaved image text example](images/example.png )
 
- -relevant image example
+ - relevant image example
  ![relevant image example](images/example2.png )
 
- -in context example
+ - in context example
  ![in context example](images/example3.png )
 ### Training
 Run training scripts in [run_script](run_script) :
