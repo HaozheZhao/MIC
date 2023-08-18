@@ -13,10 +13,6 @@ DATASETS = VQA_TASKS
 
 
 USE_FAST = {
-    'bert': True,
-    'roberta': True,
-    'deberta': True,
-    'gpt2': True,
-    'deberta-v2': False,
-    'blip2': True
+    'blip2': True,
+    'instructblip': True
 }

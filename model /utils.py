@@ -1,11 +1,4 @@
-'''
-Author: JustBluce 972281745@qq.com
-Date: 2022-11-24 08:58:23
-LastEditors: JustBluce 972281745@qq.com
-LastEditTime: 2023-02-18 09:53:29
-FilePath: /DialogueVersionConteol/model/utils.py
-Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-'''
+
 
 from transformers import (
     BertModel,
@@ -16,6 +9,7 @@ from transformers import (
     DebertaV2Model,
     AutoConfig
 )
+import torch
 
 from model.blip2.modeling_blip_2 import Blip2ForConditionalGeneration
 from model.instructblip.modeling_instructblip import InstructBlipForConditionalGeneration
@@ -35,6 +29,7 @@ def get_model(model_args, config: AutoConfig, fix_bert: bool = False):
         config=config
     )
 
+
     for param in model.parameters():
         param.requires_grad = False
         # model.query_tokens.requires_grad = True
@@ -42,21 +37,22 @@ def get_model(model_args, config: AutoConfig, fix_bert: bool = False):
     #     param.requires_grad = True
     for param in model.language_projection.parameters():
         param.requires_grad = True
-    # for param in model.vision_model.encoder.layers[-3:].parameters():
-    #     param.requires_grad = True
-        
-    # for param in model.language_model.decoder.block[-3:].parameters():
-    #     param.requires_grad = True
 
-    for block in model.language_model.encoder.block:
-        block.layer[0].SelfAttention.q.weight.requires_grad=True
-        block.layer[0].SelfAttention.v.requires_grad=True
+    if model_args.backbone_model == 'flan-t5':
+        for block in model.language_model.encoder.block:
+            block.layer[0].SelfAttention.q.weight.requires_grad=True
+            block.layer[0].SelfAttention.v.requires_grad=True
 
-    for block in model.language_model.decoder.block:
-        block.layer[0].SelfAttention.q.weight.requires_grad=True
-        block.layer[0].SelfAttention.v.requires_grad=True
-        block.layer[1].EncDecAttention.q.requires_grad=True
-        block.layer[1].EncDecAttention.v.requires_grad=True
+        for block in model.language_model.decoder.block:
+            block.layer[0].SelfAttention.q.weight.requires_grad=True
+            block.layer[0].SelfAttention.v.requires_grad=True
+            block.layer[1].EncDecAttention.q.requires_grad=True
+            block.layer[1].EncDecAttention.v.requires_grad=True
+    else:# vicuna
+        print(f"vicuna layer:{len(model.language_model.model.layers)}")
+        for block in model.language_model.model.layers:
+            block.self_attn.q_proj.weight.requires_grad=True
+            block.self_attn.v_proj.weight.requires_grad=True
     
     all_param = 0
     trained_param=0

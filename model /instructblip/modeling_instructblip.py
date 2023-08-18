@@ -1674,7 +1674,8 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
             language_model = AutoModelForSeq2SeqLM.from_config(config.text_config)
 
         self.language_model = language_model
-
+        
+        self.max_sequence_length = config.text_config.max_sequence_length if hasattr(config.text_config, "max_sequence_length") else 512
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1740,6 +1741,7 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
         return_dict: Optional[bool] = None,
         img_mask: Optional[torch.Tensor] = None,
         set_min_padding_size: bool =True,
+        sp_token: Optional[int] = 32100, # flant5-- 32100; vicuna-- 32001
     ) -> Union[Tuple, InstructBlipForConditionalGenerationModelOutput]:
         r"""
         Returns:
@@ -1779,7 +1781,6 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
         What is unusual about this image? The image is unusual because it depicts a person standing on top of a car, which is parked on the side of the road. This is an unusual position for a person to be in, as they are typically not expected to stand on top of a car while it is parked. Additionally, the person in the image appears to be wearing a suit and tie, which is not typical attire for someone who is standing on top of a car. It is unclear why the person is in this unusual position or what they are doing there.
         ```"""
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        sp_token = 32100 # 图 sp_token_id_T5 
         sp_token_bert = 32100 # 图 sp_token_id_bert 
         lm_inputs =[]
         lm_masks =[]
@@ -1869,6 +1870,12 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
                 attention_mask = attention_mask.to(language_model_inputs.device)
 
             inputs_embeds = self.get_input_embeddings()(input_ids)
+            # image_embeds_index = torch.where(input_ids == sp_token)
+            # for count,idx in enumerate(zip(image_embeds_index[0],image_embeds_index[1])):
+            #     i,j = idx
+            # inputs_embeds[i,j] = language_model_inputs[count]
+            
+            # inputs_embeds.index_fill_(i, j, language_model_inputs[count])
 
             for index in range(batch_size):
                 image_embeds_index = torch.where(input_ids[index] == sp_token)[0]
@@ -1880,17 +1887,17 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
                         i+=1
                 embed2idx = {i:img_id[input_ids[index][idx-1].item()] for i,idx in enumerate(image_embeds_index)}
 
-                emd=[inputs_embeds[index][:image_embeds_index[0]]]
-                mask = [attention_mask[index][:image_embeds_index[0]]]
+                single_inputs_embeds=[inputs_embeds[index][:image_embeds_index[0]]]
+                single_attention_mask = [attention_mask[index][:image_embeds_index[0]]]
 
                 for i,j in enumerate(image_embeds_index):
                     start = j+1
                     end = image_embeds_index[i+1] if i < len(image_embeds_index)-1 else len(inputs_embeds[index])
                     img_idx = embed2idx[i]+img_count[:index].sum()
-                    emd +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
-                    mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
-                single_inputs_embeds = torch.cat(emd, dim=0)
-                single_attention_mask = torch.cat(mask, dim=0)
+                    single_inputs_embeds +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
+                    single_attention_mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
+                single_inputs_embeds = torch.cat(single_inputs_embeds, dim=0)
+                single_attention_mask = torch.cat(single_attention_mask, dim=0)
                 lm_inputs.append(single_inputs_embeds)
                 lm_masks.append(single_attention_mask)
                 lm_input_size.append(32*img_count[index].item()+torch.nonzero(attention_mask[index])[-1].item()+1-img_count[index].item())
@@ -1898,13 +1905,18 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
 
 
 
-        min_padding_size = max(lm_input_size) if max(lm_input_size) <512 else 512
+        min_padding_size = max(lm_input_size) if max(lm_input_size) <self.max_sequence_length else self.max_sequence_length
         if not set_min_padding_size:
             min_padding_size = 10000 
-        # min_padding_size = 512
-        inputs_embeds = torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
-        attention_mask = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
+        # min_padding_size = self.max_sequence_length
+        lm_inputs =  torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
+        lm_masks = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
+        del language_model_inputs,inputs_embeds,language_attention_mask,attention_mask
+        inputs_embeds = lm_inputs
+        attention_mask = lm_masks
+        torch.cuda.empty_cache()
 
+        
         # attention_mask = torch.cat([language_model_attention_mask, attention_mask], dim=1)
 
         if self.config.use_decoder_only_language_model:
@@ -1965,6 +1977,7 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
         attention_mask: Optional[torch.LongTensor] = None,
         img_mask: Optional[torch.Tensor] = None,
         set_min_padding_size: bool = True ,
+        sp_token: Optional[int] = 32100, # flant5-- 32100; vicuna-- 32001
         **generate_kwargs,
     ) -> torch.LongTensor:
         """
@@ -1989,7 +2002,6 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
             # preprocess for `accelerate`
             self._preprocess_accelerate()
         
-        sp_token = 32100 # 图 sp_token_id_T5 
         sp_token_bert = 32100 # 图 sp_token_id_bert 
         lm_inputs =[]
         lm_masks =[]
@@ -2101,21 +2113,26 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
                         img_idx = embed2idx[i]+img_count[:index].sum()
                         emd +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
                         mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
-                    single_inputs_embeds = torch.cat(emd, dim=0)
-                    single_attention_mask = torch.cat(mask, dim=0)
-                    lm_inputs.append(single_inputs_embeds)
-                    lm_masks.append(single_attention_mask)
+                    emd = torch.cat(emd, dim=0)
+                    mask = torch.cat(mask, dim=0)
+                    lm_inputs.append(emd)
+                    lm_masks.append(mask)
                     lm_input_size.append(32*img_count[index].item()+torch.nonzero(attention_mask[index])[-1].item()+1-img_count[index].item())
                 else:
                     lm_inputs.append(torch.cat([language_model_inputs,inputs_embeds], dim=0))
                     lm_masks.append(torch.cat([language_attention_mask,attention_mask], dim=0))
                     lm_input_size.append(32*img_count[index].item()+attention_mask.shape[0])
-        min_padding_size = max(lm_input_size) if max(lm_input_size) <512 else 512
-        # min_padding_size = 512
+        min_padding_size = max(lm_input_size) if max(lm_input_size) <self.max_sequence_length else self.max_sequence_length
+        # min_padding_size = self.max_sequence_length
         if not set_min_padding_size:
             min_padding_size = 10000 
-        inputs_embeds = torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
-        attention_mask = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
+        lm_inputs =  torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
+        lm_masks = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
+        del language_model_inputs,inputs_embeds,language_attention_mask,attention_mask
+        inputs_embeds = lm_inputs
+        attention_mask = lm_masks
+        torch.cuda.empty_cache()
+
         # concatenate query embeddings with prompt embeddings
 
         outputs = self.language_model.generate(

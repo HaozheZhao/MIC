@@ -33,6 +33,7 @@ from collections.abc import Mapping
 
 logger = logging.getLogger(__name__)
 IGNORE_INDEX=-100
+MASK_INDEX =1
 datasets.config.IN_MEMORY_MAX_SIZE = 300 *1024 *1024 *1024
 
 class FlickrDataset():
@@ -140,7 +141,7 @@ class FlickrDataset():
         if training_args.do_predict or data_args.dataset_name is not None or data_args.test_file is not None:
             if data_args.max_predict_samples is not None:
                 self.predict_dataset = self.predict_dataset.select(range(data_args.max_predict_samples))
-
+        self.special_visual_token_id = self.processor.tokenizer.convert_tokens_to_ids("图") if self.model_args.backbone_model == 'flan-t5' else self.processor.tokenizer.convert_tokens_to_ids("<visual_embedding>")
         self.data_collator = self.collector
         self.metric = load_metric('accuracy')
         self.test_key = "accuracy"
@@ -227,7 +228,50 @@ class FlickrDataset():
         mask[:image.shape[0]] = True
         image = pad(image,(0,0,0,0,0,0,0,pad_len)) # padding behind the first dim
         return image,mask
+    
+    def pad_features(self, features,feature_name,dtype=torch.long,pad_token_id=32000, padding= 'pad_2_max_length'):
 
+        # Step 1: Create a list of label tensors
+        if isinstance(features[0][feature_name],torch.Tensor):
+            padded_labels = [f[feature_name][0] for f in features]
+        elif isinstance(features[0][feature_name],np.ndarray):
+            padded_labels = [torch.tensor(f[feature_name][0]) for f in features]
+        else:
+            padded_labels = [torch.tensor(np.array(f[feature_name][0])) for f in features]
+        # Step 2: Get the max length of the label tensors
+        max_length = max(len(f[feature_name][0]) for idx,f in enumerate(features)) if padding == 'pad_2_max_length' else self.max_seq_length
+        if max_length < self.max_seq_length:
+            max_length = self.max_seq_length
+        # Step 3: Pad the label tensors
+        padded_labels = [pad(label, (0, max_length - len(label)), value=pad_token_id) for label in padded_labels]
+        padded_labels = torch.stack(padded_labels).to(dtype)
+        return padded_labels
+    def replicate_values(self,tensor, indices, num_replications):
+        new_tensor = tensor.copy()
+        for i,index in enumerate(indices):
+            value_to_replicate = tensor[index]
+            idx = index+i*num_replications
+            replicated_values = np.repeat(value_to_replicate, num_replications)
+            new_tensor = np.insert(new_tensor, idx+1, replicated_values)
+        return new_tensor
+
+
+    def padding_input_ids(self,feature,sp_token,key='input_ids',num_replications=31,dtype = torch.long):
+        pad_input_ids=[]
+        length =[]
+        diff_length =[]
+        for each in feature:
+            o_tensor = each[key][0]
+            if not isinstance(o_tensor, np.ndarray):
+                o_tensor = np.array(o_tensor)
+            target_indices = np.where(o_tensor == sp_token)[0]
+            new_tensor = self.replicate_values(o_tensor, target_indices, num_replications)
+            length.append(len(new_tensor))
+            diff_length.append(len(new_tensor)-len(o_tensor))
+            pad_input_ids.append(torch.tensor(new_tensor))
+        max_length = max(length)
+        pad_ids = torch.stack([pad(ids, (0, max_length - length[idx]), value=self.processor.tokenizer.pad_token_id) for idx,ids in enumerate(pad_input_ids)])
+        return pad_ids,diff_length
 
     def collector(self, features: List[InputDataClass]):
         if not isinstance(features[0], Mapping):
@@ -238,24 +282,41 @@ class FlickrDataset():
         if "label" in first and first["label"] is not None:
             label = first["label"].item() if isinstance(first["label"], torch.Tensor) else first["label"]
             dtype = torch.long if isinstance(label, List) else torch.float
-            batch["labels"] = torch.tensor([f["label"] for f in features], dtype=dtype)
+            if self.model_args.backbone_model == 'flan-t5':
+                batch["labels"] = torch.tensor([f["label"] for f in features], dtype=dtype)
+            else:
+                batch["labels"] = self.pad_features(features,'label',dtype,self.processor.tokenizer.pad_token_id)
         elif "label_ids" in first and first["label_ids"] is not None:
             if isinstance(first["label_ids"], torch.Tensor):
-                batch["labels"] = torch.stack([f["label_ids"] for f in features])
+                if self.model_args.backbone_model == 'flan-t5':
+                    batch["labels"] = torch.stack([f["label_ids"] for f in features])
+                else:
+                    batch["labels"] = self.pad_features(features,'label_ids',torch.long,self.processor.tokenizer.pad_token_id)
             else:
                 dtype = torch.long if type(first["label_ids"][0]) is int else torch.float
-                batch["labels"] = torch.tensor([f["label_ids"] for f in features], dtype=dtype)
+                if self.model_args.backbone_model == 'flan-t5':
+                    batch["labels"] = torch.tensor([f["label_ids"] for f in features], dtype=dtype)
+                else:
+                    batch["labels"] = self.pad_features(features,'label_ids',dtype,self.processor.tokenizer.pad_token_id)
         batch["labels"][torch.where( batch["labels"]==self.processor.tokenizer.pad_token_id)]= IGNORE_INDEX 
         ignored_keys = ['input_text', 'input_image', 'output_text', 'output_image','pixel_values']
         for k, v in first.items():
-            if k not in ("label", "label_ids") and v is not None and not isinstance(v, str) and k not in ignored_keys :
-                if isinstance(v, torch.Tensor):
-                    batch[k] = torch.stack([f[k] for f in features])
-                elif isinstance(v, np.ndarray):
-                    batch[k] = torch.tensor(np.stack([f[k] for f in features]))
-                else:
-                    batch[k] = torch.tensor([f[k] for f in features])
-            elif k == 'pixel_values':
+            if self.model_args.backbone_model == 'flan-t5':
+                # expend input tokens to suit for vision token
+                if k not in ("label", "label_ids") and v is not None and not isinstance(v, str) and k not in ignored_keys :
+                    if isinstance(v, torch.Tensor):
+                        batch[k] = torch.stack([f[k] for f in features])
+                    elif isinstance(v, np.ndarray):
+                        batch[k] = torch.tensor(np.stack([f[k] for f in features]))
+                    else:
+                        batch[k] = torch.tensor([f[k] for f in features])
+
+            else:
+                # expend input tokens to suit for vision token
+                if k not in ("label", "label_ids") and v is not None and not isinstance(v, str) and k not in ignored_keys :
+                    pad_token_id = self.processor.tokenizer.pad_token_id if k !='attention_mask' else 0
+                    batch[k] = self.pad_features(features,k,pad_token_id = pad_token_id)
+            if k == 'pixel_values':
                 max_image_length = max([len(f[k]) for f in features])
                 image_list=[]
                 mask_list= []
@@ -263,11 +324,25 @@ class FlickrDataset():
                     image,img_mask =self.padd_images(f[k],max_image_length)
                     image_list.append(image)
                     mask_list.append(img_mask)
-                if self.training_args.bf16_full_eval:
-                    batch[k] = torch.stack(image_list).to(dtype=torch.bfloat16)
-                else:
-                    batch[k] = torch.stack(image_list)
+                batch[k] = torch.stack(image_list)
                 batch['img_mask'] = torch.stack(mask_list)
+            
+            # if k == 'input_ids':
+            #     batch[k],self.length = self.padding_input_ids(features,self.special_visual_token_id)
+            # if k in ['attention_mask'] and 'input_ids' in batch:
+            #     pad_length = batch['input_ids'].shape[-1] 
+            #     # pad image_token space
+            #     temp_pad = [pad(ids, ( self.length[idx],0 ), value=MASK_INDEX) for idx,ids in enumerate(batch[k])]
+            #     # pad space
+            #     batch[k] = torch.stack([pad(ids, (0 ,pad_length-len(ids)), value=0) for idx,ids in enumerate(temp_pad)])
+        # pad_length = batch['input_ids'].shape[-1] 
+        # # pad image_token space
+        # temp_pad = [pad(ids, (self.length[idx],0 ), value=IGNORE_INDEX) for idx,ids in enumerate(batch['labels'])]
+        # # pad space
+        # batch['labels'] = torch.stack([pad(ids, (0,pad_length-len(ids)), value=IGNORE_INDEX) for idx,ids in enumerate(temp_pad)])
+
+
+        # batch['labels'] = pad(batch['labels'], (pad_length,0 ), value=IGNORE_INDEX)    
         # for each in batch:
         #     if isinstance(batch[each], torch.Tensor) and (batch[each].dtype == torch.float32):
         #         batch[each] = batch[each].to(dtype= torch.bfloat16)
@@ -277,8 +352,18 @@ class FlickrDataset():
             q_former_re = self.processor.qformer_tokenizer(q_former_input, padding=self.padding, max_length=self.max_seq_length, truncation=True,return_tensors="pt")
             batch['qformer_input_ids'] = q_former_re['input_ids']
             batch['qformer_attention_mask'] = q_former_re['attention_mask']
-            
+        # if self.model_args.backbone_model == 'vicuna':
+        #     img_per_row = torch.sum(batch['input_ids'] == self.special_visual_token_id, dim=1)
+        #     pad_length = 32*max(img_per_row)
+        #     batch['input_ids'] = pad(batch['input_ids'], (0, pad_length), value=self.processor.tokenizer.pad_token_id)
+        #     batch['attention_mask'] = pad(batch['attention_mask'], (0, pad_length), value=0)
 
+            
+        batch['sp_token'] = self.special_visual_token_id
+        if self.training_args.full_bf16_training:
+            for k, v in batch.items():
+                if isinstance(v, torch.Tensor) and k in ['pixel_values']:
+                    batch[k] = v.to(dtype=torch.bfloat16)
         return batch
 
     def compute_metrics(self, p: EvalPrediction):
@@ -299,7 +384,7 @@ class FlickrDataset():
         
         p_token_batch = self.processor.tokenizer.batch_decode(preds,skip_special_tokens=True)
         label_token_batch = self.processor.tokenizer.batch_decode(labels,skip_special_tokens=True)
-        # rouge_mertic = rouge(p_token_batch , label_token_batch )
+        rouge_mertic = rouge(p_token_batch , label_token_batch )
         for i,p_token in enumerate(p_token_batch):
 
             # if self.training_args.multiple_choice:
@@ -335,7 +420,7 @@ class FlickrDataset():
         dict_return['cider'] = cider
         dict_return['accuracy'] = accuracy/len(preds)
         dict_return['avg_bleuScore'] = np.array(bleu_result).mean()
-        # dict_return.update(rouge_mertic)
+        dict_return.update(rouge_mertic)
 
 
         return dict_return

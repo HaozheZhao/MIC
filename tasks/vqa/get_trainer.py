@@ -1,11 +1,3 @@
-'''
-Author: JustBluce 972281745@qq.com
-Date: 2022-11-24 09:02:57
-LastEditors: JustBluce 972281745@qq.com
-LastEditTime: 2023-02-18 10:57:49
-FilePath: /ATIS/tasks/atis/get_trainer.py
-Description: 设置trainer
-'''
 import logging
 import random
 from transformers import AdamW
@@ -30,6 +22,7 @@ def get_trainer(args):
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
     model_type = model_args.model_type
+    backbone_model = model_args.backbone_model
     if model_type == 'blip2':
         config = Blip2Config.from_pretrained(
                     model_args.model_name_or_path
@@ -38,29 +31,45 @@ def get_trainer(args):
         config = InstructBlipConfig.from_pretrained(
             model_args.model_name_or_path
         )
+    if backbone_model == 'vicuna':
+        config.text_config.pad_token_id = 32000
+    config.text_config.max_sequence_length = data_args.max_seq_length
     model = get_model(model_args, config)
+    if training_args.full_bf16_training:
+        model = model.to(dtype=torch.bfloat16)
+        
     processor_path =  model_args.processor_path if model_args.processor_path is not None else model_args.model_name_or_path
     if model_type == 'blip2':
         processor = Blip2Processor.from_pretrained(
             processor_path,
         )
-        sp = ["图"]+[f"<image{i}>" for i in range(20)]
-        sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
-        processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+        if backbone_model == 'flan-t5':
+            sp = ["图"]+[f"<image{i}>" for i in range(20)]
+            sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
+            processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+        else: # opt
+            sp = ["<visual_embedding>"]+[f"<image{i}>" for i in range(20)]
+            processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+            model.language_model.resize_token_embeddings(len(processor.tokenizer))
 
     elif model_type == 'instructblip':
         processor = InstructBlipProcessor.from_pretrained(
             processor_path
         )
      
-        sp = ["图"]+[f"<image{i}>" for i in range(20)]
-        sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
-        processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+        if backbone_model == 'flan-t5':
+            sp = ["图"]+[f"<image{i}>" for i in range(20)]
+            sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
+            processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+        else: #vicuna
+            sp = ["<visual_embedding>"]+[f"<image{i}>" for i in range(20)]
+            processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+            processor.qformer_tokenizer.add_special_tokens({'additional_special_tokens':sp})
+            model.language_model.resize_token_embeddings(len(processor.tokenizer))
+        # bert tokenizer for q-former
         processor.qformer_tokenizer.add_special_tokens({'additional_special_tokens':sp})
         if model.qformer.embeddings.word_embeddings.weight.shape[0] != len(processor.qformer_tokenizer):
             model.qformer.resize_token_embeddings(len(processor.qformer_tokenizer))
-
-
     config.text_config._from_model_config =False
     
     dataset = FlickrDataset(processor, model_args, data_args, training_args, config)
@@ -95,7 +104,7 @@ def get_trainer(args):
             train_dataset=dataset.train_dataset if training_args.do_train else None,
             # test_dataset=dataset.eval_dataset if training_args.do_test else None,
             eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
-            predict_dataset=dataset.predict_dataset, # 这个是用来测试的
+            predict_dataset=dataset.predict_dataset, 
             compute_metrics=dataset.compute_metrics,
             data_collator=dataset.data_collator,
         )
@@ -109,7 +118,7 @@ def get_trainer(args):
             train_dataset=dataset.train_dataset if training_args.do_train else None,
             # test_dataset=dataset.eval_dataset if training_args.do_test else None,
             eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
-            predict_dataset=dataset.predict_dataset, # 这个是用来测试的
+            predict_dataset=dataset.predict_dataset, 
             compute_metrics=dataset.compute_metrics,
             data_collator=dataset.data_collator,
         )

@@ -37,13 +37,12 @@
             "device": "cpu",
             "pin_memory": true
         },
-        
+        "allgather_partitions": true,
+        "allgather_bucket_size": 6e7,
         "overlap_comm": true,
-        "contiguous_gradients": true,
-        "sub_group_size": 1e9,
-        "stage3_max_live_parameters": 1e9,
-        "stage3_max_reuse_distance": 1e9,
-        "stage3_gather_16bit_weights_on_model_save": true
+        "reduce_scatter": true,
+        "reduce_bucket_size": 6e7,
+        "contiguous_gradients": true
     },
 
     "gradient_accumulation_steps": "auto",
@@ -51,4 +50,3 @@
     "train_batch_size": "auto",
     "train_micro_batch_size_per_gpu": "auto"
 }
-

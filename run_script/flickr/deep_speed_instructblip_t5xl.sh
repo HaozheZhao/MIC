@@ -1,20 +1,10 @@
-###
- # @Author: JustBluce 972281745@qq.com
- # @Date: 2022-11-24 13:29:31
- # @LastEditors: JustBluce 972281745@qq.com
- # @LastEditTime: 2023-02-18 21:04:18
- # @FilePath: /SNIPS/run_script/SNIPS/run_boolq.sh
- # @Description: 测试SNIPS用到的脚本
-###
-
-export EXPERIMENT_NAME=instruct_BLIP2_deepSpeed_t5xl_unfreeze_Qformer_Projection_Encoder_DecoderLLM_QV_weight_no_instructqformer
+export EXPERIMENT_NAME=instruct_BLIP_deepSpeed_t5xl_unfreeze_Qformer_Projection_Encoder_DecoderLLM_QV_weight_no_instructqformer
 export DATASET_NAME=flickr
 export CUDA_VISIBLE_DEVICES=2,3,4,5,6,7
-export MODEL_DIR=/home/haozhezhao/models/
+export MODEL_DIR=models/
 export MODEL_NAME=blip2-flan-t5-xxl
 model_name_or_path=Salesforce/instructblip-flan-t5-xl
-# model_name_or_path=${MODEL_DIR}${MODEL_NAME}
-# remember to change the consponding tokenizer model
+
 
 bs=10
 eval_bs=12
@@ -34,9 +24,9 @@ deepspeed --master_port $master_port run.py \
 --max_seq_length 512 \
 --overwrite_cache True \
 --pad_to_max_length True \
---train_file /home/haozhezhao/Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
---validation_file /home/haozhezhao/Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
---test_file /home/haozhezhao/Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
+--train_file Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
+--validation_file Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
+--test_file Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
 --do_train $do_train \
 --do_eval $do_valid \
 --do_predict $do_test \

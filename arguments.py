@@ -273,7 +273,12 @@ class ModelArguments:
         metadata={
             "help": ""
         }
-
+    )
+    backbone_model: Optional[str] = field(
+        default="flan-t5",
+        metadata={
+            "help": "flan-t5,opt,vicuna"
+        }
     )
 
 
@@ -319,6 +324,12 @@ class ExtraTrainingArguments(TrainingArguments):
         default=True,
         metadata={
             "help": ""
+        }
+    )
+    full_bf16_training: bool = field(
+        default=False,
+        metadata={
+            "help": "WHETHER TO USE BF16 full TRAINING"
         }
     )
 def get_args():

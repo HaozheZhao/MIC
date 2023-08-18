@@ -7,27 +7,48 @@ from typing import Dict
 
 import datasets
 import transformers
-from transformers import set_seed, Trainer
+import torch
+from transformers import set_seed, Trainer, TrainerCallback
 from transformers.trainer_utils import get_last_checkpoint
 from os.path import join
 from arguments import get_args
 from tasks.utils import *
-
+import warnings
+import time
+ 
+warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 
+class ProfCallback(TrainerCallback):
+    def __init__(self, prof):
+        self.prof = prof
+
+    def on_step_end(self, args, state, control, **kwargs):
+        self.prof.step()
 
 def train(trainer, resume_from_checkpoint=None, last_checkpoint=None):
     checkpoint = None
 
     print("start training")
 
-    ## 是否载入之前的ckpt
+
     if resume_from_checkpoint is not None:
         checkpoint = resume_from_checkpoint
     elif last_checkpoint is not None:
         checkpoint = last_checkpoint
     train_result = trainer.train(resume_from_checkpoint=checkpoint)
     # trainer.save_model()
+    # with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,
+    #                                         torch.profiler.ProfilerActivity.CUDA], 
+    #                             schedule=torch.profiler.schedule(skip_first=3, wait=1, warmup=1, active=2, repeat=2),
+    #                             on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
+    #                             profile_memory=True,
+    #                             with_stack=True,
+    #                             record_shapes=True) as prof:
+    
+    #     trainer.add_callback(ProfCallback(prof=prof))
+    #     train_result = trainer.train(resume_from_checkpoint=checkpoint)
+        # trainer.save_model()
 
     metrics = train_result.metrics
 
@@ -86,8 +107,6 @@ def predict(trainer, predict_dataset=None):
         with open(os.path.join('./checkpoints/', trainer.model_args.experiment_name, "labels.json"), "w") as f:
             json.dump(labels.tolist(), f, indent=4)
 if __name__ == "__main__":
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "4"
     args = get_args()
 
     model_args, data_args, training_args = args

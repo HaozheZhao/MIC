@@ -1200,6 +1200,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
             language_model = AutoModelForSeq2SeqLM.from_config(config.text_config)
 
         self.language_model = language_model
+        self.max_sequence_length = config.text_config.max_sequence_length if hasattr(config.text_config, "max_sequence_length") else 512
         # if torch.cuda.is_available() and torch.cuda.device_count()>1 :
         #     self.language_model.parallelize()
         # initialize a processor
@@ -1225,6 +1226,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         return_dict: Optional[bool] = None,
         img_mask: Optional[torch.Tensor] = None,
         set_min_padding_size: bool = True,
+        sp_token: Optional[int] = 32100, # for flan-t5; opt ? 32001
     ) -> Union[Tuple, Blip2ForConditionalGenerationModelOutput]:
         r"""
         Returns:
@@ -1287,9 +1289,6 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         ```"""
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         
-        # locted img location
-        sp_token = 32100 # 图 token_id
-        img_token_0=32101
         # step 1: forward the images through the vision encoder,
         # to get image embeddings of shape (batch_size, seq_len, hidden_size)
         # mutil image mode
@@ -1359,18 +1358,22 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
                     img_idx = embed2idx[i]+img_count[:index].sum()
                     emd +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
                     mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
-                single_inputs_embeds = torch.cat(emd, dim=0)
-                single_attention_mask = torch.cat(mask, dim=0)
-                lm_inputs.append(single_inputs_embeds)
-                lm_masks.append(single_attention_mask)
+                emd = torch.cat(emd, dim=0)
+                mask = torch.cat(mask, dim=0)
+                lm_inputs.append(emd)
+                lm_masks.append(mask)
                 lm_input_size.append(32*img_count[index].item()+torch.nonzero(attention_mask[index])[-1].item()+1-img_count[index].item())
             
-        min_padding_size = max(lm_input_size) if max(lm_input_size) <512 else 512
-        # min_padding_size = 512
+        min_padding_size = max(lm_input_size) if max(lm_input_size) <self.max_sequence_length else self.max_sequence_length
+        # min_padding_size = self.max_sequence_length
         if not set_min_padding_size:
             min_padding_size = 10000 
-        inputs_embeds = torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) if len(lm_inputs)>0 else None
-        attention_mask = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks]) if len(lm_masks)>0 else None
+
+        lm_inputs =  torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) if len(lm_inputs)>0 else None
+        lm_masks = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks]) if len(lm_masks)>0 else None
+        del language_model_inputs,inputs_embeds,language_attention_mask,attention_mask
+        inputs_embeds = lm_inputs
+        attention_mask = lm_masks
         # concat to generate the input multi-image-text embedding
 
         if self.config.use_decoder_only_language_model:
@@ -1428,6 +1431,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         attention_mask: Optional[torch.LongTensor] = None,
         img_mask: Optional[torch.Tensor] = None,
         set_min_padding_size: bool = True,
+        sp_token: Optional[int] = 32100, # for flan-t5; opt ? 32001
         **generate_kwargs,
     ) -> torch.LongTensor:
         """
@@ -1444,7 +1448,6 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         Returns:
             captions (list): A list of strings of length batch_size * num_captions.
         """
-        sp_token = 32100 # 图 token_id
         lm_inputs =[]
         lm_masks =[]
         lm_input_size=[]
@@ -1514,21 +1517,24 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
                         emd +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
                         mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
 
-                    single_inputs_embeds = torch.cat(emd, dim=0)
-                    single_attention_mask = torch.cat(mask, dim=0)
-                    lm_inputs.append(single_inputs_embeds)
-                    lm_masks.append(single_attention_mask)
+                    emd = torch.cat(emd, dim=0)
+                    mask = torch.cat(mask, dim=0)
+                    lm_inputs.append(emd)
+                    lm_masks.append(mask)
                     lm_input_size.append(32*img_count[index].item()+torch.nonzero(attention_mask[index])[-1].item()+1-img_count[index].item())
                 else:
                     lm_inputs.append(torch.cat([language_model_inputs,inputs_embeds], dim=0))
                     lm_masks.append(torch.cat([language_attention_mask,attention_mask], dim=0))
                     lm_input_size.append(32*img_count[index].item()+attention_mask.shape[0])
-        min_padding_size = max(lm_input_size) if max(lm_input_size) <512 else 512
-        # min_padding_size = 512
+        min_padding_size = max(lm_input_size) if max(lm_input_size) <self.max_sequence_length else self.max_sequence_length
+        # min_padding_size = self.max_sequence_length
         if not set_min_padding_size:
             min_padding_size = 10000 
-        inputs_embeds = torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
-        attention_mask = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
+        lm_inputs =  torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
+        lm_masks = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
+        del language_model_inputs,inputs_embeds,language_attention_mask,attention_mask
+        inputs_embeds = lm_inputs
+        attention_mask = lm_masks
         # concatenate query embeddings with prompt embeddings
 
         outputs = self.language_model.generate(
