@@ -12,7 +12,38 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 + Visual Encoder:  VIT-L from CLIP/ ViT-G/14 from EVA-CLIP 
 
 
-+ Pre-trained LLM: FlanT5-XL/FlanT5-XXL/Vicuna-7B/Vicuna-13B
++ Pre-trained LLM: FlanT5-XL/ FlanT5-XXL/ Vicuna-7B/ Vicuna-13B
+
++ <mark>**Capability of multiple images refering and reasoning**<mark>
+
++ <mark>**Manually constructed In-context instruction tuning dataset**<mark>
+
++ <mark>**1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal), 1st on Cognition of [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) and 2nd on Perception of[MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)**<mark>
+
+## Performance
+
+### [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
+
+| Method  | Vision Model | Language Model | Overall  | LR    | AR     | RR    | FP-S | FP-C  | CP     |
+|---------|--------------|----------------|----------|-------|--------|-------|------|-------|--------|
+| MMICL   | EVA-G        | FLANT5-XXL     | **65.24**    | 44.32 | **77.85**  | **64.78** | **66.5** | **53.6**  |  **70.64** |
+| [JiuTian](https://github.com/rshaojimmy/JiuTian) | EVA-G        | FLANT5-XXL     | 64.7     | 46.6  | 76.5   | 66.7  | 66.5 | 51.6  | 68.7   |
+
+### [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)
+
+|       | Cognition | Commonsense Reasoning | Numerical Calculation | Text Translation | Code Reasoning |
+|-------|-----------|-----------------------|-----------------------|------------------|----------------|
+| SCORE | **338.93**    | 121.43                | 65                    | 85               | 67.5           |
+| RANK  | **1**         | 2                     | 4                     | 2                | 6              |
+
+
+
+|       | Perception | Existence | Count  | Position | Color | Posters | Celebrity | Scene | Landmark | Artwork | OCR   |
+|-------|------------|-----------|--------|----------|-------|---------|-----------|-------|----------|---------|-------|
+| SCORE | 1367.56    | 170       | **153.33** | 80       | **170**   | 118.71  | 145.59    | 154   | 142.93   | 120.5   | 112.5 |
+| RANK  | 2          | 4         | **1**      | 4        | **1**     | 9      | 3         | 5     | 5        | 4       | 2     |
+
+
 
 ## Reproduce Tips
 Since experiments reported in our paper are all conducted on NVIDIA DGX-A40 servers (which might be difficult to acquire), 
