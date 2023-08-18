@@ -1,10 +1,11 @@
 # MIC 
 Visual Language Models (VLMs) have made significant progress in various downstream tasks by developing large-scale multimodal models. However, they sometimes lack reasoning and contextual learning abilities. On the other hand, Large Language Models (LLMs) have revolutionized the NLP community with their strong reasoning and contextual learning capabilities. LLMs can quickly adapt to new tasks involving inference without fine-tuning pre-trained models or parameter updates, such as question answering and commonsense reasoning.
 
-Studying in context learning abilities contributes to VLMs' ability to generalize new knowledge in lifelong learning environments, develop learnable capabilities, and advance artificial intelligence skills. Therefore, we propose the MIC dataset. This is a manually constructed instruction tuning dataset supports interleaved text-image inputs, inter-related multiple image inputs, and multimodal in-context learning inputs. By finetuning VLMs on MIC, we enable them to possess multimodal in-context learning capabilities and understand complex relationships between instructions and multiple images.
+Studying in context learning abilities contributes to VLMs' ability to generalize new knowledge in lifelong learning environments, develop learnable capabilities, and advance artificial intelligence skills. Therefore, we propose the **MIC(Multimodality In-Context Learning)** dataset. This is a manually constructed instruction tuning dataset supports interleaved text-image inputs, inter-related multiple image inputs, and multimodal in-context learning inputs. By finetuning VLMs on MIC, we enable them to possess multimodal in-context learning capabilities and understand complex relationships between instructions and multiple images.
 
 ## MMICL 
- MMICL is a multimodal vision-language model that incorporates blip2/instrcutblip. It has the ability to analyze and understand multiple images, as well as follow instructions. MMICL outperforms the VL model of the same size and performs exceptionally well on complex visual reasoning datasets. It achieves state-of-the-art performance on various multimodal task leaderboards. Furthermore, it showcases new capabilities in video understanding and multimodal in-context learning (M-ICL). 
+ **MMICL(Multi-Modal In-Context Learning)** is a multimodal vision-language model that incorporates blip2/instrcutblip. It has the ability to analyze and understand multiple images, as well as follow instructions. MMICL outperforms the VL model of the same size and performs exceptionally well on complex visual reasoning datasets. It achieves **state-of-the-art** performance on both multimodal task leaderboards and a
+wide range of vision-language tasks. Furthermore, it showcases new capabilities in video understanding and multimodal in-context learning (M-ICL). 
 
  🔥 Further details of model and dataset will be released ASAP. 
 
@@ -18,9 +19,26 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 
 + <mark>**Manually constructed In-context instruction tuning dataset**<mark>
 
-+ <mark>**1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal), 1st on Cognition of [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation) and 2nd on Perception of[MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)**<mark>
++ <mark>**1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)**<mark>
 
 ## Performance
+
+### [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)
+
+|       |**Perception**| Existence| Count | Position |   Color     | Posters | Celebrity | Scene    | Landmark | Artwork | OCR   |
+|-------|------------|-----------|--------|----------|-------|---------|-----------|-------|----------|---------|-------|
+| SCORE | **1376.00**| 175.00    | 143.33 | 73.33   | **171.67**   | 130.95  | 145.88    | 152.75   | 135.08   | 133.00   | 115.00 |
+| RANK  | **1**       | 4        | 2     | 5        | **1**         | 7      | 3         | 6         | 8        | 3       | 2     |
+
+
+|       | Cognition | Commonsense Reasoning | Numerical Calculation | Text Translation | Code Reasoning |
+|-------|-----------|-----------------------|-----------------------|------------------|----------------|
+| SCORE | **360.36**    | 117.86                | 62.50                    | **107.50**               | 72.50           |
+| RANK  | **1**         | 2                     | 5                     | **1**                | 4              |
+
+
+
+
 
 ### [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
 
@@ -29,19 +47,6 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 | MMICL   | EVA-G        | FLANT5-XXL     | **65.24**    | 44.32 | **77.85**  | **64.78** | **66.5** | **53.6**  |  **70.64** |
 | [JiuTian](https://github.com/rshaojimmy/JiuTian) | EVA-G        | FLANT5-XXL     | 64.7     | 46.6  | 76.5   | 66.7  | 66.5 | 51.6  | 68.7   |
 
-### [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)
-
-|       | Cognition | Commonsense Reasoning | Numerical Calculation | Text Translation | Code Reasoning |
-|-------|-----------|-----------------------|-----------------------|------------------|----------------|
-| SCORE | **338.93**    | 121.43                | 65                    | 85               | 67.5           |
-| RANK  | **1**         | 2                     | 4                     | 2                | 6              |
-
-
-
-|       | Perception | Existence | Count  | Position | Color | Posters | Celebrity | Scene | Landmark | Artwork | OCR   |
-|-------|------------|-----------|--------|----------|-------|---------|-----------|-------|----------|---------|-------|
-| SCORE | 1367.56    | 170       | **153.33** | 80       | **170**   | 118.71  | 145.59    | 154   | 142.93   | 120.5   | 112.5 |
-| RANK  | 2          | 4         | **1**      | 4        | **1**     | 9      | 3         | 5     | 5        | 4       | 2     |
 
 
 
