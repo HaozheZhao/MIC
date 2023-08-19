@@ -9,17 +9,17 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
  🔥 Further details of model and dataset will be released ASAP. 
 
-
-+ Visual Encoder:  VIT-L from CLIP/ ViT-G/14 from EVA-CLIP 
-
-
-+ Pre-trained LLM: FlanT5-XL/ FlanT5-XXL/ Vicuna-7B/ Vicuna-13B
-
 + <mark>**Capability of multiple images refering and reasoning**<mark>
 
 + <mark>**Manually constructed In-context instruction tuning dataset**<mark>
 
 + <mark>**1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)**<mark>
+
++ Visual Encoder:  VIT-L from CLIP/ ViT-G/14 from EVA-CLIP 
+
++ Pre-trained LLM: FlanT5-XL/ FlanT5-XXL/ Vicuna-7B/ Vicuna-13B
+
+
 
 ## Performance
 
