@@ -60,16 +60,17 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 Since experiments reported in our paper are all conducted on NVIDIA DGX-A40 servers (which might be difficult to acquire), 
 we reimplement MMICL with:
 
-* Ubuntu servers with 6* NVIDIA GeForce A40 (46G) GPUs 
-* cuda 11.3
-* packages with certain versions (provided below)
+* Ubuntu servers with 4/6* NVIDIA GeForce A40 (46G) GPUs
+* Install Apex to enable the bf16 training and evaluation
+* Cuda 11.3, deepspeed to enable the zero2-offload and zero3 training
+* Packages with certain versions (provided below)
 
 ### Setup
 We conduct our experiment with Anaconda3. If you have installed Anaconda3, then create the environment for MMICL:
 
 ```shell
-conda create -n vlprompt python=3.8.5
-conda activate vlprompt
+conda create -n mmicl python=3.8.5
+conda activate mmicl
 ```
 
 After we setup basic conda environment, install pytorch related packages via:
@@ -86,6 +87,7 @@ We tranform it into few shot style and stored it into jsonl files:
 It forms the all data in to multi instruction style with zero to few-shot form data.
 runing the preprocessed script and change the data into raw arrow file for further training:
 ```shell
+# The detail of MIC dataset will be added ASAP
 python data_preprocess.py
 ```
 ![Dataset](images/dataset.png )
@@ -123,6 +125,7 @@ MMICL:  {answer}
 Run training scripts in [run_script](run_script) :
 
 ```shell
+# For training the MMICL in FLANT5-xxl version
 bash run_script/flickr/deep_speed_instructblip_t5xxl.sh
 ```
 ### Inference
@@ -138,7 +141,7 @@ import torch
 from model.blip2 import Blip2Processor,Blip2ForConditionalGeneration
 from model.blip2 import Blip2Config
 model_type="instructblip"
-model_ckpt="Salesforce/instructblip-flan-t5-xl"
+model_ckpt="BleachNick/MMICL-Instructblip-T5-xxl"
 
 if 'blip2' in model_type:
     model = Blip2ForConditionalGeneration.from_pretrained(
