@@ -25,13 +25,13 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
 ### [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation)
 
-|       |**Perception**| Existence| Count | Position |   Color     | Posters | Celebrity | Scene    | Landmark | Artwork | OCR   |
+|       |**Perception(Overall)**| Existence| Count | Position |   Color     | Posters | Celebrity | Scene    | Landmark | Artwork | OCR   |
 |-------|------------|-----------|--------|----------|-------|---------|-----------|-------|----------|---------|-------|
 | SCORE | **1376.00**| 175.00    | 143.33 | 73.33   | **171.67**   | 130.95  | 145.88    | 152.75   | 135.08   | 133.00   | 115.00 |
 | RANK  | **1**       | 4        | 2     | 5        | **1**         | 7      | 3         | 6         | 8        | 3       | 2     |
 
 
-|       | Cognition | Commonsense Reasoning | Numerical Calculation | Text Translation | Code Reasoning |
+|       | **Cognition(Overall)** | Commonsense Reasoning | Numerical Calculation | Text Translation | Code Reasoning |
 |-------|-----------|-----------------------|-----------------------|------------------|----------------|
 | SCORE | **360.36**    | 117.86                | 62.50                    | **107.50**               | 72.50           |
 | RANK  | **1**         | 2                     | 5                     | **1**                | 4              |
