@@ -13,7 +13,7 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
 + <mark>**Manually constructed In-context instruction tuning dataset**<mark>
 
-+ <mark>**1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)**<mark>
++ Till 21st Aug. 2023 **1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)**
 
 + Visual Encoder:  VIT-L from CLIP/ ViT-G/14 from EVA-CLIP 
 
