@@ -9,7 +9,7 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
  🔥 Further details of model and dataset will be released ASAP. 
  
-**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://ddb87ac77b2611b779.gradio.live/)
+**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://bcd7bc41d42486e7c8.gradio.live)
 
 + <mark>**Capability of multiple images refering and reasoning**<mark>
 
