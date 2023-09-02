@@ -8,6 +8,7 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 wide range of vision-language tasks. Furthermore, it showcases new capabilities in video understanding and multimodal in-context learning (M-ICL). 
 
  🔥 Further details of model and dataset will be released ASAP. 
+ **Model**: [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl);  [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl)
  
 **Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://bcd7bc41d42486e7c8.gradio.live)
 
@@ -140,16 +141,12 @@ import json
 import transformers
 from PIL import Image
 import torch
-from model.blip2 import Blip2Processor,Blip2ForConditionalGeneration
-from model.blip2 import Blip2Config
 model_type="instructblip"
 model_ckpt="BleachNick/MMICL-Instructblip-T5-xxl"
+config_ckpt = "Salesforce/instructblip-flan-t5-xxl"
+config = InstructBlipConfig.from_pretrained(config_ckpt )
 
-if 'blip2' in model_type:
-    model = Blip2ForConditionalGeneration.from_pretrained(
-            model_ckpt,
-            config=config).to('cuda:0',dtype=torch.bfloat16)
-elif 'instructblip' in model_type:
+if 'instructblip' in model_type:
     model = InstructBlipForConditionalGeneration.from_pretrained(
         model_ckpt,
         config=config).to('cuda:0',dtype=torch.bfloat16) 
@@ -160,16 +157,14 @@ sp = ["图"]+[f"<image{i}>" for i in range(20)]
 processor = InstructBlipProcessor.from_pretrained(
     model_ckpt
 )
-# processor = Blip2Processor.from_pretrained(
-#     model_ckpt
-# )
+
 
 sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
 processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
 
 
 prompt = ['Use the image 0: <image0>图,image 1: <image1>图 and image 2: <image2>图 as a visual aid to help you calculate the equation accurately. image 0 is 2+1=3.\nimage 1 is 5+6=11.\nimage 2 is"']
-
+# images try to load the images to be a list of PIL.Image object.
 prompt = " ".join(prompt)
 
 inputs = processor(images=images, text=prompt, return_tensors="pt")
