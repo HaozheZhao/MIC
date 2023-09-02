@@ -8,6 +8,7 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 wide range of vision-language tasks. Furthermore, it showcases new capabilities in video understanding and multimodal in-context learning (M-ICL). 
 
  🔥 Further details of model and dataset will be released ASAP. 
+ 
  **Model**: [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl);  [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl)
  
 **Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://bcd7bc41d42486e7c8.gradio.live)
