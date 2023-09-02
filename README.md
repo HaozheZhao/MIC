@@ -11,7 +11,7 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
  
  **Model**: [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl);  [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl)
  
-**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://bcd7bc41d42486e7c8.gradio.live)
+**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://451d76595d74f0743b.gradio.live)
 
 + <mark>**Capability of multiple images refering and reasoning**<mark>
 
