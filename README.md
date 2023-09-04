@@ -6,7 +6,7 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 # News 🚀
 1. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
 2. [08-23] Reach the 1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
-3. [08-21] The [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl) and MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl) model has released on the huggingface hub.
+3. [08-21] The [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl) and [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl) model has released on the huggingface hub.
    
 ## MMICL 
  **MMICL(Multi-Modal In-Context Learning)** is a multimodal vision-language model that incorporates blip2/instrcutblip. It has the ability to analyze and understand multiple images, as well as follow instructions. MMICL outperforms the VL model of the same size and performs exceptionally well on complex visual reasoning datasets. It achieves **state-of-the-art** performance on both multimodal task leaderboards and a
