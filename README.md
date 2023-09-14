@@ -81,17 +81,9 @@ we reimplement MMICL with:
 We conduct our experiment with Anaconda3. If you have installed Anaconda3, then create the environment for MMICL:
 
 ```shell
-conda create -n mmicl python=3.8.5
-conda activate mmicl
+conda env create -f environment.yml
 ```
 
-After we setup basic conda environment, install pytorch related packages via:
-
-Finally, install other python packages we need:
-
-```shell
-pip install -r requirements.txt
-```
 
 ### MIC Data
 Using multiple data source such as: VCR, VQAv2, GQA, COCO, NLVR2, OKVQK, FILCKR, STVQA, MSRVTT, MSRVTTQA, TextVQA, RefCOCO, WikiArt, DiffusionDB, VSR, LLaVa-Instruct, MiniImagenet
