@@ -23,9 +23,9 @@ deepspeed --master_port $master_port run.py \
 --max_seq_length 512 \
 --overwrite_cache True \
 --pad_to_max_length True \
---train_file Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
---validation_file Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
---test_file Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
+--train_file /home/haozhezhao/Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
+--validation_file /home/haozhezhao/Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
+--test_file /home/haozhezhao/Vision-PromptSource/prompt_data_6_5_sampled_json/bilp2-prompt-allshot-multiinst_final_ver \
 --do_train $do_train \
 --do_eval $do_valid \
 --do_predict $do_test \
