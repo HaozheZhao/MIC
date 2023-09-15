@@ -4,9 +4,10 @@ Visual Language Models (VLMs) have made significant progress in various downstre
 Studying in context learning abilities contributes to VLMs' ability to generalize new knowledge in lifelong learning environments, develop learnable capabilities, and advance artificial intelligence skills. Therefore, we propose the **MIC(Multimodality In-Context Learning)** dataset. This is a manually constructed instruction tuning dataset supports interleaved text-image inputs, inter-related multiple image inputs, and multimodal in-context learning inputs. By finetuning VLMs on MIC, we enable them to possess multimodal in-context learning capabilities and understand complex relationships between instructions and multiple images.
 
 # News 🚀
-1. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
-2. [08-23] Reach the 1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
-3. [08-21] The [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl) and [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl) model has released on the huggingface hub.
+1. [09-15] Our [paper](https://arxiv.org/abs/2309.07915) has been uploaded to arXiv.
+2. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
+3. [08-23] Reach the 1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
+4. [08-21] The [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl) and [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl) model has released on the huggingface hub.
    
 ## MMICL 
  **MMICL(Multi-Modal In-Context Learning)** is a multimodal vision-language model that incorporates blip2/instrcutblip. It has the ability to analyze and understand multiple images, as well as follow instructions. MMICL outperforms the VL model of the same size and performs exceptionally well on complex visual reasoning datasets. It achieves **state-of-the-art** performance on both multimodal task leaderboards and a
