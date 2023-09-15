@@ -20,7 +20,7 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
  **Data**: [MIC_5M](https://huggingface.co/datasets/BleachNick/MIC_full); [MIC_Sampled](https://huggingface.co/datasets/BleachNick/MIC_sampled) 
  
-**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://451d76595d74f0743b.gradio.live)
+**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://8904cdd23621858859.gradio.live)
 
 + <mark>**Capability of multiple images refering and reasoning**<mark>
 
