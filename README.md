@@ -126,6 +126,16 @@ MMICL:  {answer}
 
  - in context example
  ![in context example](images/example3.png )
+
+### Examples
+![Examples](images/new_example.png )
+
+### Model Structure
+![Model Structure](images/model_struct.png )
+
+### Overview
+![Overview](images/overview.png )
+
 ### Training
 Run training scripts in [run_script](run_script) :
 
