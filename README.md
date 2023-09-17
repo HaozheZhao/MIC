@@ -3,6 +3,9 @@ Visual Language Models (VLMs) have made significant progress in various downstre
 
 Studying in context learning abilities contributes to VLMs' ability to generalize new knowledge in lifelong learning environments, develop learnable capabilities, and advance artificial intelligence skills. Therefore, we propose the **MIC(Multimodality In-Context Learning)** dataset. This is a manually constructed instruction tuning dataset supports interleaved text-image inputs, inter-related multiple image inputs, and multimodal in-context learning inputs. By finetuning VLMs on MIC, we enable them to possess multimodal in-context learning capabilities and understand complex relationships between instructions and multiple images.
 
+# Overview
+![Overview](images/overview.png )
+
 # News 🚀
 1. [09-15] Our [paper](https://arxiv.org/abs/2309.07915) has been uploaded to arXiv.
 2. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
@@ -132,9 +135,6 @@ MMICL:  {answer}
 
 ### Model Structure
 ![Model Structure](images/model_struct.png )
-
-### Overview
-![Overview](images/overview.png )
 
 ### Training
 Run training scripts in [run_script](run_script) :
