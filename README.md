@@ -196,5 +196,13 @@ generated_text = processor.batch_decode(outputs, skip_special_tokens=True)[0].st
 print(generated_text)
 
 ```
-
+<br> **📑 If you find our projects helpful to your research, please consider citing:** <br>
+```
+@article{zhao2023mmicl,
+  title={MMICL: Empowering Vision-language Model with Multi-Modal In-Context Learning},
+  author={Zhao, Haozhe and Cai, Zefan and Si, Shuzheng and Ma, Xiaojian and An, Kaikai and Chen, Liang and Liu, Zixuan and Wang, Sheng and Han, Wenjuan and Chang, Baobao},
+  journal={arXiv preprint arXiv:2309.07915},
+  year={2023}
+}
+···
 
