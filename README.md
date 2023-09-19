@@ -197,6 +197,8 @@ generated_text = processor.batch_decode(outputs, skip_special_tokens=True)[0].st
 print(generated_text)
 
 ```
+
+## Reference
 <br> **📑 If you find our projects helpful to your research, please consider citing:** <br>
 ```
 @article{zhao2023mmicl,
