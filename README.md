@@ -7,7 +7,7 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 ![Overview](images/overview.png )
 
 # News 🚀
-1. [09-19] We have converted the MMICL demo to a permanent link: [Demo for MMICL](http://testmmicl.work). The Vicuna version of MMICL and Chat Mode are presently under development, so they may require careful adjustment of generation parameters and may not work correctly.
+1. [09-19] We have converted the MMICL demo to a permanent link: [Demo for MMICL](http://www.testmmicl.work). The Vicuna version of MMICL and Chat Mode are presently under development, so they may require careful adjustment of generation parameters and may not work correctly.
 2. [09-15] Our [paper](https://arxiv.org/abs/2309.07915) has been uploaded to arXiv.
 3. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
 4. [08-23] Reach the 1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
