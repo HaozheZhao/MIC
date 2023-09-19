@@ -163,8 +163,8 @@ if 'instructblip' in model_type:
         model_ckpt,
         config=config).to('cuda:0',dtype=torch.bfloat16) 
 
-
-sp = ["图"]+[f"<image{i}>" for i in range(20)]
+image_palceholder="图"
+sp = [image_palceholder]+[f"<image{i}>" for i in range(20)]
 
 processor = InstructBlipProcessor.from_pretrained(
     model_ckpt
@@ -173,9 +173,9 @@ processor = InstructBlipProcessor.from_pretrained(
 
 sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
 processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
+replace_token=32*[image_palceholder]
 
-
-prompt = ['Use the image 0: <image0>图,image 1: <image1>图 and image 2: <image2>图 as a visual aid to help you calculate the equation accurately. image 0 is 2+1=3.\nimage 1 is 5+6=11.\nimage 2 is"']
+prompt = [f'Use the image 0: <image0>{replace_token},image 1: <image1>{replace_token} and image 2: <image2>{replace_token} as a visual aid to help you calculate the equation accurately. image 0 is 2+1=3.\nimage 1 is 5+6=11.\nimage 2 is"']
 # images try to load the images to be a list of PIL.Image object.
 prompt = " ".join(prompt)
 
