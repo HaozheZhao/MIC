@@ -32,9 +32,7 @@ def get_model(model_args, config: AutoConfig, fix_bert: bool = False):
 
     for param in model.parameters():
         param.requires_grad = False
-        # model.query_tokens.requires_grad = True
-    # for param in model.qformer.parameters():
-    #     param.requires_grad = True
+
     for param in model.language_projection.parameters():
         param.requires_grad = True
 

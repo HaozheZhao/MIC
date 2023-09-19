@@ -107,6 +107,12 @@ class DataTrainingArguments:
             "help": "whether to only test the result"
         },
     )
+    set_min_padding_size:bool = field(
+        default=True,
+        metadata={
+            "help": "cut the input when exceed the setting length"
+        }
+    )
 
 @dataclass
 class ModelArguments:
@@ -280,8 +286,14 @@ class ModelArguments:
             "help": "flan-t5,opt,vicuna"
         }
     )
+    image_place_holder: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "image_place_holder charactor for flan-t5,opt,vicuna"
+        }
+    )
 
-
+    
 @dataclass
 class ExtraTrainingArguments(TrainingArguments):
     generation_max_length: Optional[int] = field(
@@ -332,6 +344,7 @@ class ExtraTrainingArguments(TrainingArguments):
             "help": "WHETHER TO USE BF16 full TRAINING"
         }
     )
+
 def get_args():
     """Parse all the args."""
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, ExtraTrainingArguments))

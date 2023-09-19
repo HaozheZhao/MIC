@@ -1215,7 +1215,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
     @replace_return_docstrings(output_type=Blip2ForConditionalGenerationModelOutput, config_class=Blip2VisionConfig)
     def forward(
         self,
-        pixel_values: torch.FloatTensor, # 图像
+        pixel_values: torch.FloatTensor, # images
         input_ids: torch.FloatTensor, # tokens
         attention_mask: Optional[torch.LongTensor] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
@@ -1292,23 +1292,19 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         # step 1: forward the images through the vision encoder,
         # to get image embeddings of shape (batch_size, seq_len, hidden_size)
         # mutil image mode
-        lm_inputs =[]
-        lm_masks =[]
-        lm_input_size=[]
+
         batch_size = input_ids.shape[0]
         if pixel_values is None:
             inputs_embeds = self.language_model.get_input_embeddings()(input_ids)    
             if attention_mask is None:
                 attention_mask = torch.ones_like(input_ids)
             attention_mask = attention_mask.to(inputs_embeds.device)
-            lm_inputs.append(inputs_embeds)
-            lm_masks.append(attention_mask)
-            lm_input_size.append(max(torch.nonzero(attention_mask)[:,-1]).item()+1)
+
         else:
             if img_mask is None:
                 img_mask = torch.ones(pixel_values.shape[:2])
             img_count = img_mask.sum(1)
-            pixel_values = pixel_values.reshape(-1,pixel_values.shape[-3],pixel_values.shape[-2],pixel_values.shape[-1])[img_mask.reshape(-1).bool()]
+            pixel_values = pixel_values[img_mask.bool()]
             vision_outputs = self.vision_model(
                 pixel_values=pixel_values,
                 output_attentions=output_attentions,
@@ -1329,51 +1325,23 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
                 )
             query_output = query_outputs[0]
             # step 3: use the language model, conditioned on the query outputs and the prompt
-
+                
             language_model_inputs = self.language_projection(query_output)
-            language_attention_mask = torch.ones(
-                language_model_inputs.size()[:-1], dtype=torch.long, device=language_model_inputs.device
-            )
             if attention_mask is None:
                 attention_mask = torch.ones_like(input_ids)
                 attention_mask = attention_mask.to(language_model_inputs.device)
-            inputs_embeds = self.language_model.get_input_embeddings()(input_ids)
 
-            for index in range(batch_size):
-                image_embeds_index = torch.where(input_ids[index] == sp_token)[0]
-                i=0
-                img_id={}
-                for idx in image_embeds_index:
-                    if input_ids[index][idx-1].item() not in img_id:
-                        img_id[input_ids[index][idx-1].item()] = i 
-                        i+=1
-                embed2idx = {i:img_id[input_ids[index][idx-1].item()] for i,idx in enumerate(image_embeds_index)}
-
-                emd=[inputs_embeds[index][:image_embeds_index[0]]]
-                mask = [attention_mask[index][:image_embeds_index[0]]]
-
-                for i,j in enumerate(image_embeds_index):
-                    start = j+1
-                    end = image_embeds_index[i+1] if i < len(image_embeds_index)-1 else len(inputs_embeds[index])
-                    img_idx = embed2idx[i]+img_count[:index].sum()
-                    emd +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
-                    mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
-                emd = torch.cat(emd, dim=0)
-                mask = torch.cat(mask, dim=0)
-                lm_inputs.append(emd)
-                lm_masks.append(mask)
-                lm_input_size.append(32*img_count[index].item()+torch.nonzero(attention_mask[index])[-1].item()+1-img_count[index].item())
+            inputs_embeds = self.get_input_embeddings()(input_ids)
+            image_embeds_index = torch.where(input_ids == sp_token)
+            inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
             
-        min_padding_size = max(lm_input_size) if max(lm_input_size) <self.max_sequence_length else self.max_sequence_length
+        min_padding_size = min(input_ids.shape[-1],self.max_sequence_length)
         # min_padding_size = self.max_sequence_length
         if not set_min_padding_size:
             min_padding_size = 10000 
 
-        lm_inputs =  torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) if len(lm_inputs)>0 else None
-        lm_masks = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks]) if len(lm_masks)>0 else None
-        del language_model_inputs,inputs_embeds,language_attention_mask,attention_mask
-        inputs_embeds = lm_inputs
-        attention_mask = lm_masks
+        inputs_embeds = inputs_embeds[:,-min_padding_size:]
+        attention_mask = attention_mask[:,-min_padding_size:]
         # concat to generate the input multi-image-text embedding
 
         if self.config.use_decoder_only_language_model:
@@ -1448,9 +1416,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         Returns:
             captions (list): A list of strings of length batch_size * num_captions.
         """
-        lm_inputs =[]
-        lm_masks =[]
-        lm_input_size=[]
+
         batch_size = input_ids.shape[0]
         caption_flag = False
 
@@ -1466,17 +1432,15 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
             if attention_mask is None:
                 attention_mask = torch.ones_like(input_ids)
             attention_mask = attention_mask.to(inputs_embeds.device)
-            lm_inputs.append(inputs_embeds)
-            lm_masks.append(attention_mask)
-            lm_input_size.append(max(torch.nonzero(attention_mask)[:,-1]).item()+1)
         else:
             if img_mask is None:
                 img_mask = torch.ones(pixel_values.shape[:2])
             img_count = img_mask.sum(1)
-            pixel_values = pixel_values.reshape(-1,pixel_values.shape[-3],pixel_values.shape[-2],pixel_values.shape[-1])[img_mask.reshape(-1).bool()]
+            pixel_values = pixel_values[img_mask.bool()]
             
             image_embeds = self.vision_model(pixel_values, return_dict=True).last_hidden_state
 
+            
             image_attention_mask = torch.ones(image_embeds.size()[:-1], dtype=torch.long, device=image_embeds.device)
 
             query_tokens = self.query_tokens.expand(image_embeds.shape[0], -1, -1)
@@ -1490,51 +1454,21 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
             query_output = query_outputs.last_hidden_state
 
             language_model_inputs = self.language_projection(query_output)
-            language_attention_mask = torch.ones(
-                language_model_inputs.size()[:-1], dtype=torch.long, device=language_model_inputs.device
-            )
-
+            
             if attention_mask is None:
                 attention_mask = torch.ones_like(input_ids)
                 attention_mask = attention_mask.to(language_model_inputs.device)
-            inputs_embeds = self.language_model.get_input_embeddings()(input_ids)
-            for index in range(batch_size):    
-                if not caption_flag:
-                    image_embeds_index = torch.where(input_ids[index] == sp_token)[0]
-                    i=0
-                    img_id={}
-                    for idx in image_embeds_index:
-                        if input_ids[index][idx-1].item() not in img_id:
-                            img_id[input_ids[index][idx-1].item()] = i 
-                            i+=1
-                    embed2idx = {i:img_id[input_ids[index][idx-1].item()] for i,idx in enumerate(image_embeds_index)}
-                    emd=[inputs_embeds[index][:image_embeds_index[0]]]
-                    mask = [attention_mask[index][:image_embeds_index[0]]]
-                    for i,j in enumerate(image_embeds_index):
-                        start = j+1
-                        end = image_embeds_index[i+1] if i < len(image_embeds_index)-1 else len(inputs_embeds[index])
-                        img_idx = embed2idx[i]+img_count[:index].sum()
-                        emd +=[language_model_inputs[img_idx],inputs_embeds[index][start:end]]
-                        mask +=[language_attention_mask[img_idx],attention_mask[index][start:end]]
-
-                    emd = torch.cat(emd, dim=0)
-                    mask = torch.cat(mask, dim=0)
-                    lm_inputs.append(emd)
-                    lm_masks.append(mask)
-                    lm_input_size.append(32*img_count[index].item()+torch.nonzero(attention_mask[index])[-1].item()+1-img_count[index].item())
-                else:
-                    lm_inputs.append(torch.cat([language_model_inputs,inputs_embeds], dim=0))
-                    lm_masks.append(torch.cat([language_attention_mask,attention_mask], dim=0))
-                    lm_input_size.append(32*img_count[index].item()+attention_mask.shape[0])
-        min_padding_size = max(lm_input_size) if max(lm_input_size) <self.max_sequence_length else self.max_sequence_length
-        # min_padding_size = self.max_sequence_length
+            
+            inputs_embeds = self.get_input_embeddings()(input_ids)
+            image_embeds_index = torch.where(input_ids == sp_token)
+            inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
+                    
+        min_padding_size = min(input_ids.shape[-1],self.max_sequence_length)
         if not set_min_padding_size:
             min_padding_size = 10000 
-        lm_inputs =  torch.stack([ lm_input[:min_padding_size] for lm_input in lm_inputs]) 
-        lm_masks = torch.stack([ lm_mask[:min_padding_size] for lm_mask in lm_masks])
-        del language_model_inputs,inputs_embeds,language_attention_mask,attention_mask
-        inputs_embeds = lm_inputs
-        attention_mask = lm_masks
+        inputs_embeds = inputs_embeds[:,-min_padding_size:]
+        attention_mask = attention_mask[:,-min_padding_size:]
+        
         # concatenate query embeddings with prompt embeddings
 
         outputs = self.language_model.generate(

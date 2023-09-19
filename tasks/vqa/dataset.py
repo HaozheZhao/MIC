@@ -119,6 +119,7 @@ class FlickrDataset():
                     print(f"length eval dataset {self.eval_dataset.num_rows}")
                     print(f"length test dataset {self.predict_dataset.num_rows}")
             else:
+                # split train, dev, test dataset from the dataset
                 if self.model_type == 'instructblip' or self.model_type == 'blip2':
                     self.train_dataset,self.eval_dataset,self.predict_dataset = self.load_instruct_dataset_from_arrow(self.data_args.train_file)
                     self.train_dataset = self.train_dataset.shuffle(training_args.seed)
@@ -126,8 +127,6 @@ class FlickrDataset():
                 else:
                     self.train_dataset = self.load_dataset_from_arrow(data_files=self.data_args.train_file)
                     self.eval_dataset = self.load_dataset_from_arrow(data_files=self.data_args.validation_file)
-                    # self.eval_dataset =Dataset.from_file(join(self.data_args.validation_file,"bilp2-temp-val-0.arrow"))
-                    # self.predict_dataset =Dataset.from_file(join(self.data_args.test_file,"bilp2-temp-test-0.arrow"))
                     self.predict_dataset = self.load_dataset_from_arrow(data_files=self.data_args.test_file)
 
                     self.train_dataset = self.train_dataset.shuffle(training_args.seed)
@@ -141,7 +140,11 @@ class FlickrDataset():
         if training_args.do_predict or data_args.dataset_name is not None or data_args.test_file is not None:
             if data_args.max_predict_samples is not None:
                 self.predict_dataset = self.predict_dataset.select(range(data_args.max_predict_samples))
-        self.special_visual_token_id = self.processor.tokenizer.convert_tokens_to_ids("图") if self.model_args.backbone_model == 'flan-t5' else self.processor.tokenizer.convert_tokens_to_ids("<visual_embedding>")
+        if self.model_args.image_place_holder is not None:
+            self.image_place_holder = self.model_args.image_place_holder 
+        else:
+            self.image_place_holder = "图" if self.model_args.backbone_model == 'flan-t5' else "<visual_embedding>"
+        self.special_visual_token_id = self.processor.tokenizer.convert_tokens_to_ids(self.image_place_holder) 
         self.data_collator = self.collector
         self.metric = load_metric('accuracy')
         self.test_key = "accuracy"
@@ -153,16 +156,13 @@ class FlickrDataset():
         return eval_ds
 
     def load_instruct_dataset_from_arrow(self,dataset_folder):
-        # 初始化三个列表用于存储不同分类的文件地址
         train_files = []
         test_files = []
         val_files = []
 
-        # 遍历数据集文件夹
         for dataset_name in os.listdir(dataset_folder):
             dataset_path = os.path.join(dataset_folder, dataset_name)
             
-            # 检查是否存在"train"文件夹
             for dir in os.listdir(dataset_path):
                 folder = os.path.join(dataset_path, dir)
                 if 'train' in folder:
@@ -182,10 +182,6 @@ class FlickrDataset():
         return ds
     def preprocess_function_batched(self, examples):
         result= self.processor.tokenizer(examples["input_text"], padding=self.padding, max_length=self.max_seq_length, truncation=True)
-        # if self.training_args.few_shot:
-        #     result['label'] = self.processor.tokenizer(examples["output_text"], padding=self.padding, max_length=5, truncation=True)["input_ids"]
-        # else:
-        #     result['label'] = self.processor.tokenizer(examples["output_text"], padding=self.padding, max_length=32, truncation=True)["input_ids"]
         result['label'] = self.processor.tokenizer(examples["output_text"], padding=self.padding, max_length=32, truncation=True)["input_ids"]
         
  
@@ -199,11 +195,8 @@ class FlickrDataset():
             image = Image.open(join("/home/haozhezhao/Vision-PromptSource", img_path))
         return image
     def preprocess_function(self, examples):
-        # if self.training_args.multiple_choice:
-        #     candidates = examples["input_text"][examples["input_text"].index('Options: ')+9:].split('\n')
-        #     content =  examples["input_text"][:examples["input_text"].index('Options: ')]
+
         result = {}
-        # result["input_text"] = examples["input_text"]
         result["output_text"] = examples["output_text"]
         flag = isinstance(examples["input_image"],list)
         result["pixel_values"] = []
@@ -327,37 +320,16 @@ class FlickrDataset():
                 batch[k] = torch.stack(image_list)
                 batch['img_mask'] = torch.stack(mask_list)
             
-            # if k == 'input_ids':
-            #     batch[k],self.length = self.padding_input_ids(features,self.special_visual_token_id)
-            # if k in ['attention_mask'] and 'input_ids' in batch:
-            #     pad_length = batch['input_ids'].shape[-1] 
-            #     # pad image_token space
-            #     temp_pad = [pad(ids, ( self.length[idx],0 ), value=MASK_INDEX) for idx,ids in enumerate(batch[k])]
-            #     # pad space
-            #     batch[k] = torch.stack([pad(ids, (0 ,pad_length-len(ids)), value=0) for idx,ids in enumerate(temp_pad)])
-        # pad_length = batch['input_ids'].shape[-1] 
-        # # pad image_token space
-        # temp_pad = [pad(ids, (self.length[idx],0 ), value=IGNORE_INDEX) for idx,ids in enumerate(batch['labels'])]
-        # # pad space
-        # batch['labels'] = torch.stack([pad(ids, (0,pad_length-len(ids)), value=IGNORE_INDEX) for idx,ids in enumerate(temp_pad)])
 
-
-        # batch['labels'] = pad(batch['labels'], (pad_length,0 ), value=IGNORE_INDEX)    
-        # for each in batch:
-        #     if isinstance(batch[each], torch.Tensor) and (batch[each].dtype == torch.float32):
-        #         batch[each] = batch[each].to(dtype= torch.bfloat16)
         if self.model_type=='instructblip' and self.training_args.using_instruct_qformer:
             q_former_input = self.processor.tokenizer.batch_decode(batch['input_ids'])
             q_former_input = [inputs.replace('<pad>',"").replace('</s>',"") for inputs in q_former_input]
             q_former_re = self.processor.qformer_tokenizer(q_former_input, padding=self.padding, max_length=self.max_seq_length, truncation=True,return_tensors="pt")
             batch['qformer_input_ids'] = q_former_re['input_ids']
             batch['qformer_attention_mask'] = q_former_re['attention_mask']
-        # if self.model_args.backbone_model == 'vicuna':
-        #     img_per_row = torch.sum(batch['input_ids'] == self.special_visual_token_id, dim=1)
-        #     pad_length = 32*max(img_per_row)
-        #     batch['input_ids'] = pad(batch['input_ids'], (0, pad_length), value=self.processor.tokenizer.pad_token_id)
-        #     batch['attention_mask'] = pad(batch['attention_mask'], (0, pad_length), value=0)
 
+
+        batch['set_min_padding_size'] =  self.data_args.set_min_padding_size
             
         batch['sp_token'] = self.special_visual_token_id
         if self.training_args.full_bf16_training:
@@ -387,14 +359,6 @@ class FlickrDataset():
         rouge_mertic = rouge(p_token_batch , label_token_batch )
         for i,p_token in enumerate(p_token_batch):
 
-            # if self.training_args.multiple_choice:
-            #     l = label_token.split(' ')[0]
-            #     if l in p_token:
-            #         accuracy+=1
-            #     bleu_result.append(bleu([p_token],[[label_token]]).item())
-            # else:
-            #     if p_token == label_token:
-            #         accuracy+=1
             bleu_result.append(bleu([p_token],[[label_token_batch[i]]]).item())
             cider_scorer+= (p_token,[label_token_batch[i]])
             bleu_scorer+= (p_token,[label_token_batch[i]])
@@ -408,11 +372,6 @@ class FlickrDataset():
         cider,_ = cider_scorer.compute_score()
         bleu_score, _ = bleu_scorer.compute_score(option='closest', verbose=1)
 
-        # if self.training_args.multiple_choice:
-        #     dict_return ={
-        #     # "BleuScore": bleu_result,
-        #     'Avg_BleuScore':np.array(bleu_result).mean(),
-        #     }
         dict_return['bleu_1'] = bleu_score[0]
         dict_return['bleu_2'] = bleu_score[1]
         dict_return['bleu_3'] = bleu_score[2]

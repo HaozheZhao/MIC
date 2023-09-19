@@ -38,17 +38,22 @@ def get_trainer(args):
     if training_args.full_bf16_training:
         model = model.to(dtype=torch.bfloat16)
         
+    if model_args.image_place_holder is not None:
+        image_place_holder = model_args.image_place_holder 
+    else:
+        image_place_holder = "图" if model_args.backbone_model == 'flan-t5' else "<visual_embedding>"
+        
     processor_path =  model_args.processor_path if model_args.processor_path is not None else model_args.model_name_or_path
     if model_type == 'blip2':
         processor = Blip2Processor.from_pretrained(
             processor_path,
         )
         if backbone_model == 'flan-t5':
-            sp = ["图"]+[f"<image{i}>" for i in range(20)]
+            sp = [image_place_holder]+[f"<image{i}>" for i in range(20)]
             sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
             processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
         else: # opt
-            sp = ["<visual_embedding>"]+[f"<image{i}>" for i in range(20)]
+            sp = [image_place_holder]+[f"<image{i}>" for i in range(20)]
             processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
             model.language_model.resize_token_embeddings(len(processor.tokenizer))
 
@@ -58,11 +63,11 @@ def get_trainer(args):
         )
      
         if backbone_model == 'flan-t5':
-            sp = ["图"]+[f"<image{i}>" for i in range(20)]
+            sp = [image_place_holder]+[f"<image{i}>" for i in range(20)]
             sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
             processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
         else: #vicuna
-            sp = ["<visual_embedding>"]+[f"<image{i}>" for i in range(20)]
+            sp = [image_place_holder]+[f"<image{i}>" for i in range(20)]
             processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
             processor.qformer_tokenizer.add_special_tokens({'additional_special_tokens':sp})
             model.language_model.resize_token_embeddings(len(processor.tokenizer))
@@ -90,10 +95,6 @@ def get_trainer(args):
             label = dataset.train_dataset[index]["label"]
             logger.info(f"Sample label {index} of the training set: {label}.")
 
-            # pixel_values = dataset.train_dataset[index]["pixel_values"]
-            # logger.info(f"Sample inputs shape {index} of the training set: {pixel_values.shape}.")
-    # accelerator = Accelerator()
-    # model = get_model(model_args, config).to(dtype=torch.bfloat16)
     if model_type == 'blip2':
         trainer = BLIP2Trainer(
             processor=processor,
@@ -102,7 +103,6 @@ def get_trainer(args):
             args=training_args,
             model_args=model_args,
             train_dataset=dataset.train_dataset if training_args.do_train else None,
-            # test_dataset=dataset.eval_dataset if training_args.do_test else None,
             eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
             predict_dataset=dataset.predict_dataset, 
             compute_metrics=dataset.compute_metrics,
@@ -116,7 +116,6 @@ def get_trainer(args):
             args=training_args,
             model_args=model_args,
             train_dataset=dataset.train_dataset if training_args.do_train else None,
-            # test_dataset=dataset.eval_dataset if training_args.do_test else None,
             eval_dataset=dataset.eval_dataset if training_args.do_eval else None,
             predict_dataset=dataset.predict_dataset, 
             compute_metrics=dataset.compute_metrics,

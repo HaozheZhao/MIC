@@ -1,17 +1,3 @@
-# Copyright 2020 The HuggingFace Team. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import random
 import logging
 from transformers import Trainer
@@ -69,10 +55,7 @@ class BLIP2Trainer(Trainer):
         super().__init__(*args, **kwargs)
         if 'args' in kwargs:
             self.training_args = kwargs['args']
-        # if self.training_args.few_shot:
-        #     self.test_key = "accuracy"
-        # else:
-        #     self.test_key = "accuracy"
+
         self.test_key = "accuracy"
         self.processor = processor
         self.model_args = model_args
@@ -92,8 +75,7 @@ class BLIP2Trainer(Trainer):
             f"./tensorboard_log/{self.model_args.experiment_name}"
         )
         self.model_args = model_args
-        # fake_input = torch.randn(config.hidden_size).to(self.model.device)
-        # self.writer.add_graph(model=self.classifier, input_to_model=fake_input)
+
         self.best_metrics = OrderedDict({
             "best_epoch": 0,
             f"best_eval_{self.test_key}": 0,

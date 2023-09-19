@@ -736,7 +736,7 @@ def preprocess_function_batched(result,input_text,output_text):
     if 'vicuna' in model_type:
         processor.tokenizer.padding_side = "right"
         processor.tokenizer.truncation_side = 'left'
-        replace_token = "".join(32*['<visual_embedding>'])
+        replace_token = "".join(32*[image_placeholder])
         
         input_text = input_text.replace('图',replace_token)
         re = processor.tokenizer(
@@ -880,17 +880,17 @@ def zero_preprocess_json(json_file):
     for j in json_file:
         m={'output_image':""}
         if 'vcr' in j['input_image'][0]:
-            m["input_text"] = "image 0 is <image0>图.\n"+j['input_text'].split('图.\n')[-1]
+            m["input_text"] = f"image 0 is <image0>{image_placeholder}.\n"+j['input_text'].split(f'{image_placeholder}.\n')[-1]
             m["input_image"] = [j["input_image"][0]]
             m['output_text'] = j["output_text"]
         else:
             image_id = len(j['input_text'].split('\n'))-1
-            m["input_text"] = ("image 0 is <image0>图.\n"+j['input_text'].split('\n')[-1]).replace(f'image {image_id}','image 0').replace(f'<image{image_id}>','<image0>')
+            m["input_text"] = (f"image 0 is <image0>{image_placeholder}.\n"+j['input_text'].split('\n')[-1]).replace(f'image {image_id}','image 0').replace(f'<image{image_id}>','<image0>')
             m["input_image"] = [j["input_image"][-1]]
             m['output_text'] = j["output_text"]
-        if 'vicuna'  in model_type:
-            replace_token = "".join(32*['<visual_embedding>'])
-            m['input_text'] = m['input_text'].replace('图',replace_token)
+
+        replace_token = "".join(32*[image_placeholder])
+        m['input_text'] = m['input_text'].replace(image_placeholder,replace_token)
         re.append(m)
     return re
 def zero_shot_to_arrow(file_name,length=-1,do_train = True,convert_file_name=None):
@@ -1012,6 +1012,10 @@ warnings.filterwarnings("ignore")
 model_type='vicuna'
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 path_dir = 'Vision-PromptSource/'
+if 'vicuna' in model_type:
+    image_placeholder = "<visual_embedding>"
+else:
+    image_placeholder = "图" 
 sample_number = 5
 if 'vicuna' in model_type:
     model_name_or_path = 'Salesforce/instructblip-vicuna-7b'
@@ -1023,11 +1027,11 @@ processor = InstructBlipProcessor.from_pretrained(
     model_name_or_path,
 )
 if 'vicuna' in model_type:
-    sp = ["<visual_embedding>"]+[f"<image{i}>" for i in range(20)]
+    sp = [image_placeholder]+[f"<image{i}>" for i in range(20)]
     processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
     max_seq_length = min(2048, processor.tokenizer.model_max_length)
 else:
-    sp = ["图"]+[f"<image{i}>" for i in range(20)]
+    sp = [image_placeholder]+[f"<image{i}>" for i in range(20)]
     sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
     processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
     max_seq_length = min(512, processor.tokenizer.model_max_length)
@@ -1042,6 +1046,7 @@ if seed is not None:
     random.seed(seed)
     torch.manual_seed(seed)
     
+
 save_dir_name='prompt_data_8_11_max_figure5_vicuna_json'
 store_path='prompt_data_8_11_vicuna_fewshot'
 generate_jsonl_data_from_instances(store_path)
