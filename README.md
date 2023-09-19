@@ -7,10 +7,11 @@ Studying in context learning abilities contributes to VLMs' ability to generaliz
 ![Overview](images/overview.png )
 
 # News 🚀
-1. [09-15] Our [paper](https://arxiv.org/abs/2309.07915) has been uploaded to arXiv.
-2. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
-3. [08-23] Reach the 1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
-4. [08-21] The [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl) and [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl) model has released on the huggingface hub.
+1. [09-19] We have converted the MMICL demo to a permanent link: [Demo for MMICL](http://testmmicl.work). The Vicuna version of MMICL and Chat Mode are presently under development, so they may require careful adjustment of generation parameters and may not work correctly.
+2. [09-15] Our [paper](https://arxiv.org/abs/2309.07915) has been uploaded to arXiv.
+3. [09-01] The [MIC](https://huggingface.co/datasets/BleachNick/MIC_full) data has released on the huggingface hub.
+4. [08-23] Reach the 1st on [MME](https://github.com/BradyFU/Awesome-Multimodal-Large-Language-Models/tree/Evaluation), 1st on [MMBench](https://opencompass.org.cn/leaderboard-multimodal)
+5. [08-21] The [MMICL-FLANT5XXL](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xxl) and [MMICL-Tiny](https://huggingface.co/BleachNick/MMICL-Instructblip-T5-xl) model has released on the huggingface hub.
    
 ## MMICL 
  **MMICL(Multi-Modal In-Context Learning)** is a multimodal vision-language model that incorporates blip2/instrcutblip. It has the ability to analyze and understand multiple images, as well as follow instructions. MMICL outperforms the VL model of the same size and performs exceptionally well on complex visual reasoning datasets. It achieves **state-of-the-art** performance on both multimodal task leaderboards and a
@@ -23,7 +24,7 @@ wide range of vision-language tasks. Furthermore, it showcases new capabilities 
 
  **Data**: [MIC_5M](https://huggingface.co/datasets/BleachNick/MIC_full); [MIC_Sampled](https://huggingface.co/datasets/BleachNick/MIC_sampled) 
  
-**Temporal demo for MMICL**: [playground for MMICL-FLANT5XXL](https://8904cdd23621858859.gradio.live)
+**Demo for MMICL**: [playground for MMICL-FLANT5XXL](http://testmmicl.work)
 
 + <mark>**Capability of multiple images refering and reasoning**<mark>
 
