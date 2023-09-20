@@ -177,10 +177,11 @@ if model.qformer.embeddings.word_embeddings.weight.shape[0] != len(processor.qfo
 replace_token="".join(32*[image_palceholder])
 ```
 #### Images:
-
+<p align="center">
 <img src="images/cal_num1.png" alt="Image 1" width="200" />
 <img src="images/cal_num2.png" alt="Image 2" width="200" />
 <img src="images/cal_num3.png" alt="Image 3" width="200" />
+</p>
 
 ```
 image = Image.open ("images/cal_num1.png")
@@ -217,13 +218,13 @@ print(generated_text)
         3x6=18"
 
 #### Images:
-
+<p align="center">
 <img src="images/chinchilla.png" alt="Image 1" width="200"  height="150" />
 <img src="images/shiba.png" alt="Image 2" width="130"  height="150" />
 <img src="images/flamingo.png" alt="Image 3" width="180"  height="150" />
+</p>
 
 ```
-
 image = Image.open ("images/chinchilla.png")
 image1 = Image.open ("images/shiba.png")
 image2 = Image.open ("images/flamingo.png")
@@ -262,9 +263,11 @@ print(generated_text)
 
 #### Images:
 
+<p align="center">
 <img src="images/flamingo_photo.png" alt="Image 1" width="180"  height="150" />
 <img src="images/flamingo_cartoon.png" alt="Image 2" width="130"  height="150" />
 <img src="images/flamingo_3d.png" alt="Image 3" width="180"  height="150" />
+</p>
 
 ```
 
