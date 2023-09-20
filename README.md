@@ -146,6 +146,7 @@ bash run_script/flickr/deep_speed_instructblip_t5xxl.sh
 ```
 ### Inference
 
+
 ```
 # For T5 based model
 from model.instructblip import InstructBlipConfig, InstructBlipModel, InstructBlipPreTrainedModel,InstructBlipForConditionalGeneration,InstructBlipProcessor
@@ -155,9 +156,9 @@ import transformers
 from PIL import Image
 import torch
 model_type="instructblip"
-model_ckpt="BleachNick/MMICL-Instructblip-T5-xxl"
-config_ckpt = "Salesforce/instructblip-flan-t5-xxl"
-config = InstructBlipConfig.from_pretrained(config_ckpt )
+model_ckpt="/home/haozhezhao/MMICL-Instructblip-T5-xxl"
+processor_ckpt = "Salesforce/instructblip-flan-t5-xxl"
+config = InstructBlipConfig.from_pretrained(model_ckpt )
 
 if 'instructblip' in model_type:
     model = InstructBlipForConditionalGeneration.from_pretrained(
@@ -166,18 +167,28 @@ if 'instructblip' in model_type:
 
 image_palceholder="图"
 sp = [image_palceholder]+[f"<image{i}>" for i in range(20)]
-
 processor = InstructBlipProcessor.from_pretrained(
-    model_ckpt
+    processor_ckpt
 )
-
-
 sp = sp+processor.tokenizer.additional_special_tokens[len(sp):]
 processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
-replace_token=32*[image_palceholder]
+if model.qformer.embeddings.word_embeddings.weight.shape[0] != len(processor.qformer_tokenizer):
+    model.qformer.resize_token_embeddings(len(processor.qformer_tokenizer))
+replace_token="".join(32*[image_palceholder])
+```
+#### Images:
+
+<img src="images/cal_num1.png" alt="Image 1" width="200" />
+<img src="images/cal_num2.png" alt="Image 2" width="200" />
+<img src="images/cal_num3.png" alt="Image 3" width="200" />
+
+```
+image = Image.open ("images/cal_num1.png")
+image1 = Image.open ("images/cal_num2.png")
+image2 = Image.open ("images/cal_num3.png")
+images = [image,image1,image2]
 
 prompt = [f'Use the image 0: <image0>{replace_token},image 1: <image1>{replace_token} and image 2: <image2>{replace_token} as a visual aid to help you calculate the equation accurately. image 0 is 2+1=3.\nimage 1 is 5+6=11.\nimage 2 is"']
-# images try to load the images to be a list of PIL.Image object.
 prompt = " ".join(prompt)
 
 inputs = processor(images=images, text=prompt, return_tensors="pt")
@@ -191,12 +202,107 @@ outputs = model.generate(
         pixel_values = inputs['pixel_values'],
         input_ids = inputs['input_ids'],
         attention_mask = inputs['attention_mask'],
-        img_mask = inputs['img_mask']
+        img_mask = inputs['img_mask'],
+        do_sample=False,
+        max_length=50,
+        min_length=1,
+        set_min_padding_size =False,
 )
 generated_text = processor.batch_decode(outputs, skip_special_tokens=True)[0].strip()
 print(generated_text)
 
 ```
+#### Output:
+
+        3x6=18"
+
+#### Images:
+
+<img src="images/chinchilla.png" alt="Image 1" width="200"  height="150" />
+<img src="images/shiba.png" alt="Image 2" width="130"  height="150" />
+<img src="images/flamingo.png" alt="Image 3" width="180"  height="150" />
+
+```
+
+image = Image.open ("images/chinchilla.png")
+image1 = Image.open ("images/shiba.png")
+image2 = Image.open ("images/flamingo.png")
+images = [image,image1,image2]
+images = [image,image1,image2]
+prompt = [f'image 0 is <image0>{replace_token},image 1 is <image1>{replace_token},image 2 is <image2>{replace_token}. Question: <image0> is a chinchilla. They are mainly found in Chile.\n Question: <image1> is a shiba. They are very popular in Japan.\nQuestion: image 2 is']
+
+prompt = " ".join(prompt)
+
+inputs = processor(images=images, text=prompt, return_tensors="pt")
+
+inputs['pixel_values'] = inputs['pixel_values'].to(torch.bfloat16)
+inputs['img_mask'] = torch.tensor([[1 for i in range(len(images))]])
+inputs['pixel_values'] = inputs['pixel_values'].unsqueeze(0)
+
+inputs = inputs.to('cuda:0')
+outputs = model.generate(
+        pixel_values = inputs['pixel_values'],
+        input_ids = inputs['input_ids'],
+        attention_mask = inputs['attention_mask'],
+        img_mask = inputs['img_mask'],
+        do_sample=False,
+        max_length=50,
+        min_length=1,
+        set_min_padding_size =False,
+)
+generated_text = processor.batch_decode(outputs, skip_special_tokens=True)[0].strip()
+print(generated_text)
+
+
+```
+#### Output:
+
+       a flamingo. They are native to South America and are known for their bright red plumage and distinctive call.
+
+
+#### Images:
+
+<img src="images/flamingo_photo.png" alt="Image 1" width="180"  height="150" />
+<img src="images/flamingo_cartoon.png" alt="Image 2" width="130"  height="150" />
+<img src="images/flamingo_3d.png" alt="Image 3" width="180"  height="150" />
+
+```
+
+image = Image.open ("images/flamingo_photo.png")
+image1 = Image.open ("images/flamingo_cartoon.png")
+image2 = Image.open ("images/flamingo_3d.png")
+
+images = [image,image1,image2]
+prompt = [f'Use the image 0: <image0>{replace_token}, image 1: <image1>{replace_token} and image 2: <image2>{replace_token} as a visual aids to help you answer the question. Question: Give the reason why image 0, image 1 and image 2 are different? Answer:']
+
+prompt = " ".join(prompt)
+
+inputs = processor(images=images, text=prompt, return_tensors="pt")
+
+inputs['pixel_values'] = inputs['pixel_values'].to(torch.bfloat16)
+inputs['img_mask'] = torch.tensor([[1 for i in range(len(images))]])
+inputs['pixel_values'] = inputs['pixel_values'].unsqueeze(0)
+
+inputs = inputs.to('cuda:0')
+outputs = model.generate(
+        pixel_values = inputs['pixel_values'],
+        input_ids = inputs['input_ids'],
+        attention_mask = inputs['attention_mask'],
+        img_mask = inputs['img_mask'],
+        do_sample=False,
+        max_length=80,
+        min_length=50,
+        num_beams=8,
+        set_min_padding_size =False,
+)
+generated_text = processor.batch_decode(outputs, skip_special_tokens=True)[0].strip()
+print(generated_text)
+
+
+```
+Output:
+
+       image 0 is a photo of a flamingo standing in the water, image 1 is a cartoon drawing of a flamingo and image 2 is a low polygon count 3d model animation
 
 ## Reference
 <br> **📑 If you find our projects helpful to your research, please consider citing:** <br>
