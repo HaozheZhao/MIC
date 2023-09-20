@@ -156,7 +156,7 @@ import transformers
 from PIL import Image
 import torch
 model_type="instructblip"
-model_ckpt="/home/haozhezhao/MMICL-Instructblip-T5-xxl"
+model_ckpt="BleachNick/MMICL-Instructblip-T5-xxl"
 processor_ckpt = "Salesforce/instructblip-flan-t5-xxl"
 config = InstructBlipConfig.from_pretrained(model_ckpt )
 
