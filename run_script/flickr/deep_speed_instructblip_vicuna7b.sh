@@ -57,7 +57,7 @@ deepspeed --master_port $master_port run.py \
 --model_revision main \
 --eval_type val \
 --generation_max_length 256 \
---do_full_training True \
+--done_preprocess True \
 --max_eval_samples 1500 \
 --max_predict_samples 1500 \
 --using_instruct_qformer False \
