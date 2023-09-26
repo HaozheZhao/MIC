@@ -82,7 +82,7 @@ def get_trainer(args):
     if training_args.do_train:
         for index in random.sample(range(len(dataset.train_dataset)), 1):
             logger.info(f"Sample keys {index} of the training set: {dataset.train_dataset[index].keys()}.")
-            if not data_args.do_full_training:
+            if not data_args.done_preprocess:
                 input_text = dataset.train_dataset[index]["input_text"]
                 logger.info(f"Sample input_text {index} of the training set: {input_text}.")
                 output_text = dataset.train_dataset[index]["output_text"]
