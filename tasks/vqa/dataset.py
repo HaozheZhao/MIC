@@ -1,4 +1,6 @@
 from ast import Raise
+import base64
+from io import BytesIO
 from datasets import load_dataset, load_metric
 import random
 import json
@@ -64,38 +66,27 @@ class FlickrDataset():
             self.eval_dataset  =None
             self.train_dataset  =None
         else:
-            if not self.data_args.do_full_training:
+            if not self.data_args.done_preprocess: 
+                # do your own preprocessing
                 if self.data_args.dataset_name in ['flickr']:
-                    self.train_dataset = load_dataset('json', data_files=self.data_args.train_file)
-                    self.eval_dataset = load_dataset('json', data_files=self.data_args.validation_file)
-                    self.predict_dataset = load_dataset('json', data_files=self.data_args.test_file)
+                    if self.data_args.load_datatype is not None:
+                        self.train_dataset = load_dataset(self.data_args.load_datatype, data_files=self.data_args.train_file, streaming=True,split="train")
+                        self.eval_dataset = load_dataset(self.data_args.load_datatype, data_files=self.data_args.validation_file)
+                        self.predict_dataset = load_dataset(self.data_args.load_datatype, data_files=self.data_args.test_file)
+                    else:
+                        self.train_dataset = load_dataset(data_files=self.data_args.train_file, streaming=True,split="train")
+                        self.eval_dataset = load_dataset(data_files=self.data_args.validation_file,split="evaluation")
+                        self.predict_dataset = load_dataset(data_files=self.data_args.test_file,split="test")
 
                     self.train_dataset = self.train_dataset.shuffle(training_args.seed)
 
                     print(f"debug: train_dataset {self.train_dataset}")
 
                     self.train_dataset = self.train_dataset.map(
-                        self.preprocess_function,
-                        load_from_cache_file=not self.data_args.overwrite_cache,
-                        desc="Runing one tokenization"
-                    )
-                    # self.eval_dataset = self.train_dataset
-                    # self.predict_dataset = self.train_dataset
-                    self.eval_dataset = self.eval_dataset.map(
-                        self.preprocess_function,
-                        load_from_cache_file=not self.data_args.overwrite_cache,
-                        desc="Runing one tokenization"
-                    )
-                    self.predict_dataset = self.predict_dataset.map(
-                        self.preprocess_function,
-                        load_from_cache_file=not self.data_args.overwrite_cache,
-                        desc="Runing one tokenization"
-                    )
-                    self.train_dataset = self.train_dataset.map(
                         self.preprocess_function_batched,
                         batched=True,
-                        load_from_cache_file=not self.data_args.overwrite_cache,
-                        desc="Runing one tokenization"
+                        # load_from_cache_file=not self.data_args.overwrite_cache,
+                        # desc="Runing one tokenization"
                     )
                     self.eval_dataset = self.eval_dataset.map(
                         self.preprocess_function_batched,
@@ -111,25 +102,25 @@ class FlickrDataset():
                     )
 
                     # Split train and dev datasets
-                    self.train_dataset = self.train_dataset["train"]
-                    self.eval_dataset = self.eval_dataset["train"]
-                    self.predict_dataset = self.predict_dataset["train"]
+                    self.train_dataset = self.train_dataset.with_format("torch")
+                    self.eval_dataset = self.eval_dataset["train"].with_format("torch")
+                    self.predict_dataset = self.predict_dataset["train"].with_format("torch")
 
-                    print(f"length train dataset {self.train_dataset.num_rows}")
+                    # print(f"length train dataset {self.train_dataset.num_rows}")
                     print(f"length eval dataset {self.eval_dataset.num_rows}")
                     print(f"length test dataset {self.predict_dataset.num_rows}")
             else:
-                # split train, dev, test dataset from the dataset
-                if self.model_type == 'instructblip' or self.model_type == 'blip2':
-                    self.train_dataset,self.eval_dataset,self.predict_dataset = self.load_instruct_dataset_from_arrow(self.data_args.train_file)
-                    self.train_dataset = self.train_dataset.shuffle(training_args.seed)
+                # if self.model_type == 'instructblip' or self.model_type == 'blip2':
+                #     self.train_dataset,self.eval_dataset,self.predict_dataset = self.load_instruct_dataset_from_arrow(self.data_args.train_file) # load the preprocessed data
+                #     self.train_dataset = self.train_dataset.shuffle(training_args.seed)
 
-                else:
-                    self.train_dataset = self.load_dataset_from_arrow(data_files=self.data_args.train_file)
-                    self.eval_dataset = self.load_dataset_from_arrow(data_files=self.data_args.validation_file)
-                    self.predict_dataset = self.load_dataset_from_arrow(data_files=self.data_args.test_file)
+                # else:
+                # general way to load from arrow
+                self.train_dataset = self.load_dataset_from_arrow(data_files=self.data_args.train_file)
+                self.eval_dataset = self.load_dataset_from_arrow(data_files=self.data_args.validation_file)
+                self.predict_dataset = self.load_dataset_from_arrow(data_files=self.data_args.test_file)
 
-                    self.train_dataset = self.train_dataset.shuffle(training_args.seed)
+                self.train_dataset = self.train_dataset.shuffle(training_args.seed)
 
         if training_args.do_train:
             if data_args.max_train_samples is not None:
@@ -140,22 +131,17 @@ class FlickrDataset():
         if training_args.do_predict or data_args.dataset_name is not None or data_args.test_file is not None:
             if data_args.max_predict_samples is not None:
                 self.predict_dataset = self.predict_dataset.select(range(data_args.max_predict_samples))
-        if self.model_args.image_place_holder is not None:
-            self.image_place_holder = self.model_args.image_place_holder 
-        else:
-            self.image_place_holder = "图" if self.model_args.backbone_model == 'flan-t5' else "<visual_embedding>"
-        self.special_visual_token_id = self.processor.tokenizer.convert_tokens_to_ids(self.image_place_holder) 
-        self.data_collator = self.collector
+        self.special_visual_token_id = self.processor.tokenizer.convert_tokens_to_ids("图") if self.model_args.backbone_model == 'flan-t5' else self.processor.tokenizer.convert_tokens_to_ids("<visual_embedding>")
+        self.data_collator = self.collector if self.data_args.done_preprocess else self.collector_without_preprocess
         self.metric = load_metric('accuracy')
         self.test_key = "accuracy"
 
-    
     def load_evaluate_dataset_from_arrow(self,eval_dataset_dir):
         eval_datadir = glob(os.path.join(eval_dataset_dir, "bilp2*.arrow"))
         eval_ds= concatenate_datasets([Dataset.from_file(score) for score in eval_datadir ])
         return eval_ds
 
-    def load_instruct_dataset_from_arrow(self,dataset_folder):
+    def load_instruct_dataset_from_arrow(self,dataset_folder):  # load the preprocessed data
         train_files = []
         test_files = []
         val_files = []
@@ -180,12 +166,43 @@ class FlickrDataset():
         files = glob(join(data_files,"bilp2*[0-9].arrow"))
         ds = concatenate_datasets([Dataset.from_file(score) for score in files ])
         return ds
+    def load_base64_image(self,base64_str):
+
+        image = base64.b64decode(base64_str)
+        image = BytesIO(image)
+        image = Image.open(image)
+
+        return image
+    
     def preprocess_function_batched(self, examples):
         result= self.processor.tokenizer(examples["input_text"], padding=self.padding, max_length=self.max_seq_length, truncation=True)
         result['label'] = self.processor.tokenizer(examples["output_text"], padding=self.padding, max_length=32, truncation=True)["input_ids"]
+        result["pixel_values"] = []
+
+        flag = isinstance(examples["input_image"],list)
+        if flag:
+            if self.data_args.load_from_base64:
+                for basrr64_img in examples["input_image"]:
+                    img = self.load_base64_image(basrr64_img)
+                    result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
+            else:
+                postfix = examples["input_image"][0][1:].split('.')[-1]# load from file path
+                for img_path in examples["input_image"]:
+                    img_path = img_path[2:] if img_path[0] == '.' else img_path
+                    img = self.read_image(postfix,img_path)
+                    result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
+        else:
+            if self.data_args.load_from_base64:
+                img = self.load_base64_image(examples["input_image"])
+                result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
+            postfix = examples["input_image"][1:].split('.')[-1]# load from file path
+            img_path = examples["input_image"]
+            img_path = img_path[2:] if img_path[0] == '.' else img_path
+            img = self.read_image(postfix,img_path)
+            result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
         
+        return result    
  
-        return result
     def read_image(self, postfix,img_path):
         if postfix == 'png':
             image = Image.open(join("/home/haozhezhao/Vision-PromptSource",img_path))
@@ -194,26 +211,24 @@ class FlickrDataset():
         else:
             image = Image.open(join("/home/haozhezhao/Vision-PromptSource", img_path))
         return image
-    def preprocess_function(self, examples):
-
-        result = {}
-        result["output_text"] = examples["output_text"]
-        flag = isinstance(examples["input_image"],list)
-        result["pixel_values"] = []
-        if flag:
-            postfix = examples["input_image"][0][1:].split('.')[-1]
-            for img_path in examples["input_image"]:
-                img_path = img_path[2:] if img_path[0] == '.' else img_path
-                img = self.read_image(postfix,img_path)
-                result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
-        else:
-            postfix = examples["input_image"][1:].split('.')[-1]
-            img_path = img_path[1:] if img_path[0] == '.' else img_path
-            img = self.read_image(postfix,img_path)
-            result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
-
-
-        return result
+    # def preprocess_function(self, examples):
+    #     result = {}
+    #     result["output_text"] = examples["output_text"]
+    #     flag = isinstance(examples["input_image"],list)
+    #     result["pixel_values"] = []
+    #     if flag:
+    #         postfix = examples["input_image"][0][1:].split('.')[-1]
+    #         for img_path in examples["input_image"]:
+    #             img_path = img_path[2:] if img_path[0] == '.' else img_path
+    #             img = self.read_image(postfix,img_path)
+    #             result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
+    #     else:
+    #         postfix = examples["input_image"][1:].split('.')[-1]
+    #         img_path = img_path[1:] if img_path[0] == '.' else img_path
+    #         img = self.read_image(postfix,img_path)
+    #         result["pixel_values"].append(self.processor(images = img)["pixel_values"][0])
+    #     return result
+    
     def padd_images(self, image, max_length):
         image = torch.tensor(image)
         mask = torch.zeros(max_length).bool()
@@ -319,7 +334,6 @@ class FlickrDataset():
                     mask_list.append(img_mask)
                 batch[k] = torch.stack(image_list)
                 batch['img_mask'] = torch.stack(mask_list)
-            
 
         if self.model_type=='instructblip' and self.training_args.using_instruct_qformer:
             q_former_input = self.processor.tokenizer.batch_decode(batch['input_ids'])
@@ -327,9 +341,12 @@ class FlickrDataset():
             q_former_re = self.processor.qformer_tokenizer(q_former_input, padding=self.padding, max_length=self.max_seq_length, truncation=True,return_tensors="pt")
             batch['qformer_input_ids'] = q_former_re['input_ids']
             batch['qformer_attention_mask'] = q_former_re['attention_mask']
+        if self.model_args.backbone_model == 'vicuna':
+            img_per_row = torch.sum(batch['input_ids'] == self.special_visual_token_id, dim=1)
+            pad_length = 32*max(img_per_row)
+            batch['input_ids'] = pad(batch['input_ids'], (0, pad_length), value=self.processor.tokenizer.pad_token_id)
+            batch['attention_mask'] = pad(batch['attention_mask'], (0, pad_length), value=0)
 
-
-        batch['set_min_padding_size'] =  self.data_args.set_min_padding_size
             
         batch['sp_token'] = self.special_visual_token_id
         if self.training_args.full_bf16_training:
@@ -338,6 +355,49 @@ class FlickrDataset():
                     batch[k] = v.to(dtype=torch.bfloat16)
         return batch
 
+    def collector_without_preprocess(self, features: List[InputDataClass]):
+        if not isinstance(features[0], Mapping):
+            features = [vars(f) for f in features]
+        first = features[0]
+        batch = {}
+
+        if "label" in first and first["label"] is not None:
+            label = first["label"][0].item() if isinstance(first["label"], torch.Tensor) else first["label"][0]
+            dtype = torch.long  if isinstance(label, int) else torch.float
+            batch["labels"] = torch.stack([f["label"] for f in features]).to(dtype)
+        elif "label_ids" in first and first["label_ids"] is not None:
+            if isinstance(first["label_ids"], torch.Tensor):
+                batch["labels"] = torch.stack([f["label_ids"] for f in features])
+            else:
+                dtype = torch.long if type(first["label_ids"][0]) is int else torch.float
+                batch["labels"] = torch.tensor([f["label_ids"] for f in features], dtype=dtype)
+        batch["labels"][torch.where( batch["labels"]==self.processor.tokenizer.pad_token_id)]= IGNORE_INDEX 
+        ignored_keys = ['input_text', 'input_image', 'output_text', 'output_image','pixel_values']
+        for k, v in first.items():
+            if k not in ("label", "label_ids") and v is not None and not isinstance(v, str) and k not in ignored_keys :
+                if isinstance(v, torch.Tensor):
+                    batch[k] = torch.stack([f[k] for f in features])
+                elif isinstance(v, np.ndarray):
+                    batch[k] = torch.tensor(np.stack([f[k] for f in features]))
+                else:
+                    batch[k] = torch.tensor([f[k] for f in features])
+            if k == 'pixel_values':
+                max_image_length = max([len(f[k]) for f in features])
+                image_list=[]
+                mask_list= []
+                for f in features:
+                    image,img_mask =self.padd_images(f[k],max_image_length)
+                    image_list.append(image)
+                    mask_list.append(img_mask)
+                batch[k] = torch.stack(image_list)
+                batch['img_mask'] = torch.stack(mask_list)
+        batch['sp_token'] = self.special_visual_token_id
+
+        if self.training_args.full_bf16_training:
+            for k, v in batch.items():
+                if isinstance(v, torch.Tensor) and k in ['pixel_values']:
+                    batch[k] = v.to(dtype=torch.bfloat16)
+        return batch
     def compute_metrics(self, p: EvalPrediction):
 
         preds = p.predictions
@@ -356,19 +416,20 @@ class FlickrDataset():
         
         p_token_batch = self.processor.tokenizer.batch_decode(preds,skip_special_tokens=True)
         label_token_batch = self.processor.tokenizer.batch_decode(labels,skip_special_tokens=True)
-        rouge_mertic = rouge(p_token_batch , label_token_batch )
+        self.save_pred_label(p_token_batch, label_token_batch, self.training_args.output_dir)
+        try:
+            rouge_mertic = rouge(p_token_batch , label_token_batch )
+            dict_return.update(rouge_mertic)
+        except:
+            print("error when compute rouge")
         for i,p_token in enumerate(p_token_batch):
 
-            bleu_result.append(bleu([p_token],[[label_token_batch[i]]]).item())
+            bleu_result.append(bleu([p_token],[[label_token_batch[i]]]).item()*100)
             cider_scorer+= (p_token,[label_token_batch[i]])
             bleu_scorer+= (p_token,[label_token_batch[i]])
             l = label_token_batch[i].split(' ')[0]
-            if "option" in l:
-                if l in p_token or p_token in label_token_batch[i]:
-                    accuracy+=1
-            else:
-                if p_token == label_token_batch[i] or p_token in label_token_batch[i] or  label_token_batch[i] in p_token:
-                    accuracy+=1
+            if p_token == label_token_batch[i] or p_token in label_token_batch[i] or  label_token_batch[i] in p_token:
+                accuracy+=1
         cider,_ = cider_scorer.compute_score()
         bleu_score, _ = bleu_scorer.compute_score(option='closest', verbose=1)
 
@@ -379,7 +440,6 @@ class FlickrDataset():
         dict_return['cider'] = cider
         dict_return['accuracy'] = accuracy/len(preds)
         dict_return['avg_bleuScore'] = np.array(bleu_result).mean()
-        dict_return.update(rouge_mertic)
 
 
         return dict_return

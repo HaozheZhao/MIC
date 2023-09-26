@@ -95,10 +95,16 @@ class DataTrainingArguments:
             "help": "whether to use preprocessed data"
         },
     )
-    do_full_training: Optional[bool] = field(
+    done_preprocess: Optional[bool] = field(
         default=False,
         metadata={
-            "help": "whether to using all data"
+            "help": "whether has finished the data preprocess "
+        },
+    )
+    load_datatype: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "json or parquet"
         },
     )
     only_evaluate: Optional[bool] = field(
@@ -107,11 +113,11 @@ class DataTrainingArguments:
             "help": "whether to only test the result"
         },
     )
-    set_min_padding_size:bool = field(
-        default=True,
+    load_from_base64: Optional[bool] = field(
+        default=False,
         metadata={
-            "help": "cut the input when exceed the setting length"
-        }
+            "help": "whether to load preprocessed image data from base64"
+        },
     )
 
 @dataclass
@@ -286,14 +292,8 @@ class ModelArguments:
             "help": "flan-t5,opt,vicuna"
         }
     )
-    image_place_holder: Optional[str] = field(
-        default=None,
-        metadata={
-            "help": "image_place_holder charactor for flan-t5,opt,vicuna"
-        }
-    )
 
-    
+
 @dataclass
 class ExtraTrainingArguments(TrainingArguments):
     generation_max_length: Optional[int] = field(
@@ -344,7 +344,6 @@ class ExtraTrainingArguments(TrainingArguments):
             "help": "WHETHER TO USE BF16 full TRAINING"
         }
     )
-
 def get_args():
     """Parse all the args."""
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, ExtraTrainingArguments))
