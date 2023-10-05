@@ -1209,8 +1209,8 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
         self.post_init()
 
     def get_input_embeddings(self) -> nn.Module:
-        return self.vision_model.embeddings.patch_embedding
-
+        return self.language_model.get_input_embeddings()
+    
     @add_start_docstrings_to_model_forward(BLIP_2_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Blip2ForConditionalGenerationModelOutput, config_class=Blip2VisionConfig)
     def forward(
@@ -1331,7 +1331,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
                 attention_mask = torch.ones_like(input_ids)
                 attention_mask = attention_mask.to(language_model_inputs.device)
 
-            inputs_embeds = self.get_input_embeddings()(input_ids)
+            inputs_embeds = self.language_model.get_input_embeddings()(input_ids)
             image_embeds_index = torch.where(input_ids == sp_token)
             inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
             
@@ -1459,7 +1459,7 @@ class Blip2ForConditionalGeneration(Blip2PreTrainedModel):
                 attention_mask = torch.ones_like(input_ids)
                 attention_mask = attention_mask.to(language_model_inputs.device)
             
-            inputs_embeds = self.get_input_embeddings()(input_ids)
+            inputs_embeds = self.language_model.get_input_embeddings()(input_ids)
             image_embeds_index = torch.where(input_ids == sp_token)
             inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
                     
