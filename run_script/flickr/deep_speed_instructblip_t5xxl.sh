@@ -1,7 +1,7 @@
 
 export EXPERIMENT_NAME=instruct_BLIP_deepSpeed_t5xxl_unfreeze_Projection_LLM_QV_weight_without_instruct_qformer
 export DATASET_NAME=flickr
-export CUDA_VISIBLE_DEVICES=2,3,4,5,6,7
+export CUDA_VISIBLE_DEVICES=1,2,3,4,5,6
 export MODEL_DIR=models/
 model_name_or_path=Salesforce/instructblip-flan-t5-xxl
 

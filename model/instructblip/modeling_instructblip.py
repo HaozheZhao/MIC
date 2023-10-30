@@ -1863,9 +1863,13 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
 
         if not set_min_padding_size:
             min_padding_size = 10000 
-
-        inputs_embeds = inputs_embeds[:,-min_padding_size:]
-        attention_mask = attention_mask[:,-min_padding_size:]
+        
+        # vicuna
+        # inputs_embeds = inputs_embeds[:,-min_padding_size:]
+        # attention_mask = attention_mask[:,-min_padding_size:]
+        # t5
+        inputs_embeds = inputs_embeds[:,:min_padding_size]
+        attention_mask = attention_mask[:,:min_padding_size]
 
         if self.config.use_decoder_only_language_model:
             outputs = self.language_model(
@@ -1879,7 +1883,10 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
             loss = None
             # we compute the loss here since we need to take into account the sequence length of the query embeds
             if labels is not None:
-                labels = labels[:,-min_padding_size:]
+                # vicuna
+                # labels = labels[:,-min_padding_size:]
+                # t5
+                labels = labels[:,:min_padding_size]
                 labels = labels.to(logits.device)
                 logits = logits[:, -labels.size(1) :, :]
                 # Shift so that tokens < n predict n
@@ -2032,9 +2039,12 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
 
         if not set_min_padding_size:
             min_padding_size = 10000 
-
-        inputs_embeds = inputs_embeds[:,-min_padding_size:]
-        attention_mask = attention_mask[:,-min_padding_size:]
+        # vicuna
+        # inputs_embeds = inputs_embeds[:,-min_padding_size:]
+        # attention_mask = attention_mask[:,-min_padding_size:]
+        # t5
+        inputs_embeds = inputs_embeds[:,:min_padding_size]
+        attention_mask = attention_mask[:,:min_padding_size]
 
 
 
