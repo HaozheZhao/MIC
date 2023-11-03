@@ -248,7 +248,7 @@ class FlickrDataset():
             padded_labels = [torch.tensor(np.array(f[feature_name][0])) for f in features]
         # Step 2: Get the max length of the label tensors
         max_length = max(len(f[feature_name][0]) for idx,f in enumerate(features)) if padding == 'pad_2_max_length' else self.max_seq_length
-        if max_length < self.max_seq_length:
+        if max_length > self.max_seq_length:
             max_length = self.max_seq_length
         # Step 3: Pad the label tensors
         padded_labels = [pad(label, (0, max_length - len(label)), value=pad_token_id) for label in padded_labels]
