@@ -45,7 +45,6 @@ class DataTrainingArguments:
             "If False, will pad the samples dynamically when batching to the maximum length in the batch."
         },
     )
-    # NOTE 没用到
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -53,7 +52,6 @@ class DataTrainingArguments:
             "value if set."
         },
     )
-    # NOTE 没用到
     max_eval_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -61,7 +59,6 @@ class DataTrainingArguments:
             "value if set."
         },
     )
-    # NOTE 没用到
     max_predict_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -128,15 +125,12 @@ class ModelArguments:
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
-    # NOTE 没用到
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
-    # NOTE 没用到
     tokenizer_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
     )
-    # NOTE 没用到
     cache_dir: Optional[str] = field(
         default=None,
         metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
@@ -145,37 +139,6 @@ class ModelArguments:
         default=True,
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
-    # NOTE 没用到
-    model_revision: str = field(
-        default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
-    )
-    # NOTE 没用到
-    use_auth_token: bool = field(
-        default=False,
-        metadata={
-            "help": "Will use the token generated when running `transformers-cli login` (necessary to use this script "
-            "with private models)."
-        },
-    )
-    prefix: bool = field(
-        default=False,
-        metadata={
-            "help": "Will use P-tuning v2 during training"
-        }
-    )
-    prompt: bool = field(
-        default=False,
-        metadata={
-            "help": "Will use prompt tuning during training"
-        }
-    )
-    pre_seq_len: int = field(
-        default=6,
-        metadata={
-            "help": "The length of prompt"
-        }
-    ) # 可能会引起误会，datasets内也定义了pre_seq_len
     task_type: Optional[str] = field(
         default="language_modeling",
         metadata={
@@ -309,19 +272,13 @@ class ExtraTrainingArguments(TrainingArguments):
         }
     )
     generation_num_beams: Optional[int] = field(
-        default=5,
+        default=1,
         metadata={
             "help": "generation_num_beams"
         }
     )
     predict_with_generate: bool = field(
         default=True,
-        metadata={
-            "help": ""
-        }
-    )
-    multiple_choice : bool = field(
-        default=False,
         metadata={
             "help": ""
         }
