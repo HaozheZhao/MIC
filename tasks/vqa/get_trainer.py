@@ -42,7 +42,7 @@ def get_trainer(args):
         image_place_holder = model_args.image_place_holder 
     else:
         image_place_holder = "图" if model_args.backbone_model == 'flan-t5' else "<visual_embedding>"
-        
+    print(f"image_place_holder: {image_place_holder}")
     processor_path =  model_args.processor_path if model_args.processor_path is not None else model_args.model_name_or_path
     if model_type == 'blip2':
         processor = Blip2Processor.from_pretrained(
@@ -71,6 +71,7 @@ def get_trainer(args):
             processor.tokenizer.add_special_tokens({'additional_special_tokens':sp})
             processor.qformer_tokenizer.add_special_tokens({'additional_special_tokens':sp})
             model.language_model.resize_token_embeddings(len(processor.tokenizer))
+            model.language_model.model.embed_tokens.weight.requires_grad=True
         # bert tokenizer for q-former
         processor.qformer_tokenizer.add_special_tokens({'additional_special_tokens':sp})
         if model.qformer.embeddings.word_embeddings.weight.shape[0] != len(processor.qformer_tokenizer):
@@ -78,22 +79,23 @@ def get_trainer(args):
     config.text_config._from_model_config =False
     
     dataset = FlickrDataset(processor, model_args, data_args, training_args, config)
+    special_visual_token_id = dataset.special_visual_token_id
+    model_args.special_visual_token_id = special_visual_token_id
+    # if training_args.do_train:
+        # for index in random.sample(range(len(dataset.train_dataset)), 1):
+        #     logger.info(f"Sample keys {index} of the training set: {dataset.train_dataset[index].keys()}.")
+        #     if not data_args.done_preprocess:
+        #         input_text = dataset.train_dataset[index]["input_text"]
+        #         logger.info(f"Sample input_text {index} of the training set: {input_text}.")
+        #         output_text = dataset.train_dataset[index]["output_text"]
+        #         logger.info(f"Sample output_text {index} of the training set: {output_text}.")
 
-    if training_args.do_train:
-        for index in random.sample(range(len(dataset.train_dataset)), 1):
-            logger.info(f"Sample keys {index} of the training set: {dataset.train_dataset[index].keys()}.")
-            if not data_args.done_preprocess:
-                input_text = dataset.train_dataset[index]["input_text"]
-                logger.info(f"Sample input_text {index} of the training set: {input_text}.")
-                output_text = dataset.train_dataset[index]["output_text"]
-                logger.info(f"Sample output_text {index} of the training set: {output_text}.")
-
-            input_ids = dataset.train_dataset[index]["input_ids"]
-            logger.info(f"Sample input_ids {index} of the training set: {input_ids}.")
-            attention_mask = dataset.train_dataset[index]["attention_mask"]
-            logger.info(f"Sample attention_mask {index} of the training set: {attention_mask}.")
-            label = dataset.train_dataset[index]["label"]
-            logger.info(f"Sample label {index} of the training set: {label}.")
+        #     input_ids = dataset.train_dataset[index]["input_ids"]
+        #     logger.info(f"Sample input_ids {index} of the training set: {input_ids}.")
+        #     attention_mask = dataset.train_dataset[index]["attention_mask"]
+        #     logger.info(f"Sample attention_mask {index} of the training set: {attention_mask}.")
+        #     label = dataset.train_dataset[index]["label"]
+        #     logger.info(f"Sample label {index} of the training set: {label}.")
 
     if model_type == 'blip2':
         trainer = BLIP2Trainer(
