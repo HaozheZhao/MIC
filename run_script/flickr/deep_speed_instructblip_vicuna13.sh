@@ -1,10 +1,10 @@
-export EXPERIMENT_NAME=instruct_BLIP2_deepSpeed_vicuna7b
+export EXPERIMENT_NAME=instruct_BLIP2_deepSpeed_vicuna13b
 export DATASET_NAME=flickr
 export MODEL_DIR=models/
 export NCCL_P2P_LEVEL=NVL
 export MODEL_NAME=instructblip-vicuna-13b
-model_name_or_path=model/instructblip-vicuna-7b
-processor_path=model/instructblip-vicuna-7b
+model_name_or_path=instructblip-vicuna-13b
+processor_path=instructblip-vicuna-13b
 # Calculate the number of GPUs
 IFS=',' read -ra GPU_IDS <<< "$CUDA_VISIBLE_DEVICES"
 num_gpus="${#GPU_IDS[@]}"
