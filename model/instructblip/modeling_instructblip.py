@@ -17,6 +17,7 @@
 import math
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple, Union
+from collections import Counter
 
 import torch
 import torch.utils.checkpoint
@@ -1742,6 +1743,7 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
         img_mask: Optional[torch.Tensor] = None,
         set_min_padding_size: bool =True,
         sp_token: Optional[int] = 32100, # flant5-- 32100; vicuna-- 32001
+        **kwargs,
     ) -> Union[Tuple, InstructBlipForConditionalGenerationModelOutput]:
         r"""
         Returns:
@@ -1792,9 +1794,10 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
         else:
             if img_mask is None:
                 img_mask = torch.ones(pixel_values.shape[:2])
-            img_count = img_mask.sum(1)
+
             pixel_values = pixel_values[img_mask.bool()]
-            
+            img_mask = img_mask.bool()
+            img_count = img_mask.sum(1)
             vision_outputs = self.vision_model(
                 pixel_values=pixel_values,
                 output_attentions=output_attentions,
@@ -1855,7 +1858,56 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
 
             inputs_embeds = self.get_input_embeddings()(input_ids)
             image_embeds_index = torch.where(input_ids == sp_token)
-            inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
+
+            replace_length = inputs_embeds[image_embeds_index].shape[0]
+        
+            insert_embeds = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
+
+            insert_length = insert_embeds.shape[0]
+        
+            if insert_embeds.dtype != inputs_embeds.dtype:
+                insert_embeds = insert_embeds.to(inputs_embeds.dtype)
+
+            if replace_length == insert_length:
+                inputs_embeds[image_embeds_index] = insert_embeds
+
+            elif insert_length> replace_length:
+                print(f"shape mismatch leads to truncate. insert embedding tensor of shape {insert_embeds.shape} cannot be broadcast to replace placeholder of shape {inputs_embeds[image_embeds_index].shape}")
+                counts = Counter(image_embeds_index[0].cpu().detach().numpy())
+                img_token_szie = 32
+                # Sort the counts in ascending order of the numbers
+                sorted_counts = sorted(counts.items())
+
+                # Extract the counts as a list
+                result = [ (number,count) for number, count in sorted_counts]
+                index = 0
+                insert_embeds_list= []
+
+                img_idx = 0
+                for num,each in result:
+                    i_count = img_count[img_idx]
+                    if img_idx != num: # skip sp_token
+                        index+=i_count*img_token_szie
+                        img_idx+=1
+                        continue
+                    if int(each / img_token_szie) == i_count:
+                        insert_embeds_list.append(insert_embeds[index:index+each])
+                        index+=each
+                    else:
+                        insert_embeds_list.append(insert_embeds[index:index+each])
+                        index+= i_count*img_token_szie
+                    img_idx +=1
+                        
+                new_insert_embeds = torch.concat(insert_embeds_list, dim=0)
+                try:
+                    inputs_embeds[image_embeds_index] = new_insert_embeds
+                except:
+                    print(f"shape mismatch leads to HARD truncate. Require to fix the code! Insert embedding tensor of shape {insert_embeds.shape} cannot be broadcast to replace placeholder of shape {inputs_embeds[image_embeds_index].shape}")
+                    inputs_embeds[image_embeds_index] = insert_embeds[:replace_length]
+
+                        
+
+            # inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
 
 
 
@@ -1863,13 +1915,14 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
 
         if not set_min_padding_size:
             min_padding_size = 10000 
-        
+        if self.config.use_decoder_only_language_model:
         # vicuna
-        # inputs_embeds = inputs_embeds[:,-min_padding_size:]
-        # attention_mask = attention_mask[:,-min_padding_size:]
+            inputs_embeds = inputs_embeds[:,-min_padding_size:]
+            attention_mask = attention_mask[:,-min_padding_size:]
         # t5
-        inputs_embeds = inputs_embeds[:,:min_padding_size]
-        attention_mask = attention_mask[:,:min_padding_size]
+        else:
+            inputs_embeds = inputs_embeds[:,:min_padding_size]
+            attention_mask = attention_mask[:,:min_padding_size]
 
         if self.config.use_decoder_only_language_model:
             outputs = self.language_model(
@@ -2033,18 +2086,68 @@ class InstructBlipForConditionalGeneration(InstructBlipPreTrainedModel):
 
             inputs_embeds = self.get_input_embeddings()(input_ids)
             image_embeds_index = torch.where(input_ids == sp_token)
-            inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
+
+            replace_length = inputs_embeds[image_embeds_index].shape[0]
+        
+            insert_embeds = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
+
+            insert_length = insert_embeds.shape[0]
+        
+            if insert_embeds.dtype != inputs_embeds.dtype:
+                insert_embeds = insert_embeds.to(inputs_embeds.dtype)
+
+            if replace_length == insert_length:
+                inputs_embeds[image_embeds_index] = insert_embeds
+
+            elif insert_length> replace_length:
+                print(f"shape mismatch leads to truncate. insert embedding tensor of shape {insert_embeds.shape} cannot be broadcast to replace placeholder of shape {inputs_embeds[image_embeds_index].shape}")
+                counts = Counter(image_embeds_index[0].cpu().detach().numpy())
+                img_token_szie = 32
+                # Sort the counts in ascending order of the numbers
+                sorted_counts = sorted(counts.items())
+
+                # Extract the counts as a list
+                result = [ (number,count) for number, count in sorted_counts]
+                index = 0
+                insert_embeds_list= []
+
+                img_idx = 0
+                for num,each in result:
+                    i_count = img_count[img_idx]
+                    if img_idx != num: # skip sp_token
+                        index+=i_count*img_token_szie
+                        img_idx+=1
+                        continue
+                    if int(each / img_token_szie) == i_count:
+                        insert_embeds_list.append(insert_embeds[index:index+each])
+                        index+=each
+                    else:
+                        insert_embeds_list.append(insert_embeds[index:index+each])
+                        index+= i_count*img_token_szie
+                    img_idx +=1
+                        
+                insert_embeds = torch.concat(insert_embeds_list, dim=0)
+                try:
+                    inputs_embeds[image_embeds_index] = insert_embeds
+                except:
+                    print(f"shape mismatch leads to HARD truncate. Require to fix the code! Insert embedding tensor of shape {insert_embeds.shape} cannot be broadcast to replace placeholder of shape {inputs_embeds[image_embeds_index].shape}")
+                    inputs_embeds[image_embeds_index] = insert_embeds[:replace_length]
+
+            # inputs_embeds[image_embeds_index] = language_model_inputs.reshape(-1,language_model_inputs.shape[-1])
 
         min_padding_size = min(input_ids.shape[-1],self.max_sequence_length)
 
         if not set_min_padding_size:
             min_padding_size = 10000 
+            
+        if self.config.use_decoder_only_language_model:
         # vicuna
-        # inputs_embeds = inputs_embeds[:,-min_padding_size:]
-        # attention_mask = attention_mask[:,-min_padding_size:]
+            inputs_embeds = inputs_embeds[:,-min_padding_size:]
+            attention_mask = attention_mask[:,-min_padding_size:]
         # t5
-        inputs_embeds = inputs_embeds[:,:min_padding_size]
-        attention_mask = attention_mask[:,:min_padding_size]
+        else:
+            inputs_embeds = inputs_embeds[:,:min_padding_size]
+            attention_mask = attention_mask[:,:min_padding_size]
 
 
 

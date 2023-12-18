@@ -51,6 +51,8 @@ def get_model(model_args, config: AutoConfig, fix_bert: bool = False):
         for block in model.language_model.model.layers:
             block.self_attn.q_proj.weight.requires_grad=True
             block.self_attn.v_proj.weight.requires_grad=True
+
+
     
     all_param = 0
     trained_param=0
