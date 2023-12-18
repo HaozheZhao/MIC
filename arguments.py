@@ -116,6 +116,12 @@ class DataTrainingArguments:
             "help": "whether to load preprocessed image data from base64"
         },
     )
+    training_preprocess: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": "whether to preprocess data during training"
+        },
+    )
 
 @dataclass
 class ModelArguments:
@@ -253,6 +259,12 @@ class ModelArguments:
         default="flan-t5",
         metadata={
             "help": "flan-t5,opt,vicuna"
+        }
+    )
+    image_place_holder: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "place holder for special token"
         }
     )
 
