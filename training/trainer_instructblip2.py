@@ -74,6 +74,8 @@ class InstructBLIP2Trainer(Trainer):
         )
         self.model_args = model_args
 
+
+
         self.best_metrics = OrderedDict({
             "best_epoch": 0,
             f"best_eval_{self.test_key}": 0,
@@ -100,7 +102,8 @@ class InstructBLIP2Trainer(Trainer):
         """
         model.train()
         inputs = self._prepare_inputs(inputs)
-
+        if hasattr(self.model_args,'special_visual_token_id'):
+            inputs['sp_token'] = self.model_args.special_visual_token_id
         if is_sagemaker_mp_enabled():
             loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
             return loss_mb.reduce_mean().detach().to(self.args.device)
@@ -285,6 +288,10 @@ class InstructBLIP2Trainer(Trainer):
         gen_kwargs["synced_gpus"] = (
             gen_kwargs["synced_gpus"] if gen_kwargs.get("synced_gpus") is not None else default_synced_gpus
         )
+
+        if hasattr(self.model_args,'special_visual_token_id'):
+            gen_kwargs['sp_token'] = self.model_args.special_visual_token_id
+        
         if 'qformer_input_ids' in inputs:
             generated_tokens = self.model.generate(
                 pixel_values = inputs['pixel_values'],
@@ -305,6 +312,7 @@ class InstructBLIP2Trainer(Trainer):
                 # **inputs,
                 **gen_kwargs,
             )
+
         # Temporary hack to ensure the generation config is not initialized for each iteration of the evaluation loop
         # TODO: remove this hack when the legacy code that initializes generation_config from a model config is
         # removed in https://github.com/huggingface/transformers/blob/98d88b23f54e5a23e741833f1e973fdf600cc2c5/src/transformers/generation/utils.py#L1183
@@ -319,7 +327,19 @@ class InstructBLIP2Trainer(Trainer):
         with torch.no_grad():
             if has_labels:
                 with self.compute_loss_context_manager():
-                    outputs = model(**inputs)
+                    if 'loss_input_ids'in inputs.keys(): 
+                        outputs = model(
+                        pixel_values = inputs['pixel_values'],
+                        input_ids = inputs['loss_input_ids'],
+                        attention_mask = inputs['loss_attention_mask'],
+                        labels = inputs['loss_labels'],
+                        img_mask = inputs['img_mask'],
+                        **gen_kwargs
+                    )
+                    else:
+                        outputs = model(**inputs)
+                    
+                    
                 if self.label_smoother is not None:
                     loss = self.label_smoother(outputs, inputs["labels"]).mean().detach()
                 else:
@@ -402,8 +422,8 @@ class InstructBLIP2Trainer(Trainer):
             if eval_metrics["eval_"+self.test_key] > self.best_metrics["best_eval_"+self.test_key]:
                 self.best_metrics["best_epoch"] = epoch
                 self.best_metrics["best_eval_"+self.test_key] = eval_metrics["eval_"+self.test_key]
-                self.best_model = model
-                self._save_checkpoint(self.best_model , trial, metrics=eval_metrics)
+                # self.best_model = model
+                # self._save_checkpoint(self.best_model , trial, metrics=eval_metrics)
 
             logger.info(f"***** Epoch {epoch}: Best results *****")
             for key, value in self.best_metrics.items():
