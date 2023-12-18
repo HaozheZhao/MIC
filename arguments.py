@@ -122,6 +122,18 @@ class DataTrainingArguments:
             "help": "whether to preprocess data during training"
         },
     )
+    label_max_length: Optional[int] = field(
+        default=64,
+        metadata={
+            "help": "label_max_length"
+        },
+    )
+    data_dir: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "data_dir"
+        },
+    )
 
 @dataclass
 class ModelArguments:
@@ -145,6 +157,11 @@ class ModelArguments:
         default=True,
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
+    model_revision: str = field(
+        default="main",
+        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
+    )
+    # NOTE 没用到
     task_type: Optional[str] = field(
         default="language_modeling",
         metadata={
